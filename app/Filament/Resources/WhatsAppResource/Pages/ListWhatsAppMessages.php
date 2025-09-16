@@ -65,7 +65,8 @@ class ListWhatsAppMessages extends ListRecords
                             ->success()
                             ->send();
 
-                        $this->getTable()->getRecords();
+                        // Refresh the Livewire component (and thus the table)
+                        $this->dispatch('$refresh');
                     } catch (\Exception $e) {
                         Notification::make()
                             ->title('Error')

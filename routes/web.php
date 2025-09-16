@@ -3,13 +3,19 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentWebhookController;
+use App\Http\Middleware\VerifyCsrfToken;
 
 Route::redirect('/', '/admin');
 
 // GitHub Webhook route
 Route::match(['get', 'post'], '/webhook', [WebhookController::class, 'handle'])->name('webhook');
 
-
+// Payment Webhooks
+Route::match(['get','post'], '/webhooks/payments/{gateway}', [PaymentWebhookController::class, 'handle'])
+    ->where('gateway', '[A-Za-z0-9_-]+')
+    ->withoutMiddleware(VerifyCsrfToken::class)
+    ->name('webhooks.payments');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])

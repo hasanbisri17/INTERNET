@@ -4,9 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class WhatsAppScheduledMessage extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'customer_id',
         'payment_id',
@@ -132,5 +136,27 @@ class WhatsAppScheduledMessage extends Model
         return static::where('status', 'pending')
             ->where('scheduled_at', '<=', now())
             ->get();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        $verbs = [
+            'created' => 'dibuat',
+            'updated' => 'diperbarui',
+            'deleted' => 'dihapus',
+        ];
+
+        return LogOptions::defaults()
+            ->useLogName('whatsapp_scheduled_messages')
+            ->logOnly(['status', 'scheduled_at', 'sent_at', 'message_type'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function (string $eventName) use ($verbs) {
+                $target = optional($this->customer)->name ?? ("Pelanggan #{$this->customer_id}");
+                $verb = $verbs[$eventName] ?? $eventName;
+                $type = $this->message_type ?? '-';
+                $status = $this->status ?? '-';
+                return "Pesan Terjadwal WhatsApp ($type) untuk $target $verb. Status: $status.";
+            });
     }
 }

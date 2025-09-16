@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class WhatsAppTemplate extends Model
 {
+    use LogsActivity;
+
     protected $table = 'whatsapp_templates';
 
     protected $fillable = [
@@ -108,5 +112,25 @@ class WhatsAppTemplate extends Model
                 'is_active' => true,
             ],
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        $verbs = [
+            'created' => 'dibuat',
+            'updated' => 'diperbarui',
+            'deleted' => 'dihapus',
+        ];
+
+        return LogOptions::defaults()
+            ->useLogName('whatsapp_templates')
+            ->logOnly(['name', 'code', 'description', 'is_active', 'content', 'variables'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function (string $eventName) use ($verbs) {
+                $name = $this->name ?? ("Template #{$this->id}");
+                $verb = $verbs[$eventName] ?? $eventName;
+                return "Template WhatsApp $name $verb.";
+            });
     }
 }

@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             TransactionCategorySeeder::class,
             WhatsAppTemplateSeeder::class,
             WhatsAppSettingSeeder::class,
+            TmpPaymentSeeder::class,
         ]);
     }
 }

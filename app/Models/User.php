@@ -8,11 +8,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -53,5 +56,25 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->is_admin;
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        $verbs = [
+            'created' => 'dibuat',
+            'updated' => 'diperbarui',
+            'deleted' => 'dihapus',
+        ];
+
+        return LogOptions::defaults()
+            ->useLogName('users')
+            ->logOnly(['name', 'email', 'is_admin'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function (string $eventName) use ($verbs) {
+                $name = $this->name ?? ("Pengguna #{$this->id}");
+                $verb = $verbs[$eventName] ?? $eventName;
+                return "Pengguna $name $verb.";
+            });
     }
 }

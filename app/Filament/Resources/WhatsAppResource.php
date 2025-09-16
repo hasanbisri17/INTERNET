@@ -3,26 +3,22 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\WhatsAppResource\Pages;
-use App\Models\Customer;
 use App\Models\WhatsAppMessage;
-use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Illuminate\Support\HtmlString;
-use Filament\Support\Colors\Color;
 use Filament\Notifications\Notification;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Filters\SelectFilter;
+use App\Services\WhatsAppService;
+use Illuminate\Support\HtmlString;
 
 class WhatsAppResource extends Resource
 {
@@ -160,8 +156,8 @@ class WhatsAppResource extends Resource
                                 ->success()
                                 ->send();
 
-                            // Refresh the table records
-                            $livewire->getTable()->getRecords();
+                            // Refresh the Livewire component (and thus the table)
+                            $livewire->dispatch('$refresh');
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->title('Error')

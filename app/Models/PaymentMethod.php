@@ -4,9 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class PaymentMethod extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'name',
         'code',
@@ -31,5 +35,25 @@ class PaymentMethod extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        $verbs = [
+            'created' => 'dibuat',
+            'updated' => 'diperbarui',
+            'deleted' => 'dihapus',
+        ];
+
+        return LogOptions::defaults()
+            ->useLogName('payment_methods')
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function (string $eventName) use ($verbs) {
+                $name = $this->name ?? ("Metode Pembayaran #{$this->id}");
+                $verb = $verbs[$eventName] ?? $eventName;
+                return "$name $verb.";
+            });
     }
 }

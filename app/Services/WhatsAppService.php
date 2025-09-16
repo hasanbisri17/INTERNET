@@ -10,6 +10,7 @@ use App\Models\WhatsAppTemplate;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\SendWhatsAppMessage;
 
 class WhatsAppService
 {
@@ -130,8 +131,8 @@ class WhatsAppService
             'payment_date' => $payment->payment_date ? Carbon::parse($payment->payment_date)->format('d F Y') : '-',
         ]);
 
-        // Create WhatsApp message record
-        $whatsappMessage = new WhatsAppMessage([
+        // Create WhatsApp message record as pending
+        $whatsappMessage = WhatsAppMessage::create([
             'customer_id' => $customer->id,
             'payment_id' => $payment->id,
             'message_type' => "billing.{$type}",
@@ -139,14 +140,8 @@ class WhatsAppService
             'status' => 'pending',
         ]);
 
-        // Send message
-        $result = $this->sendMessage($customer->phone, $message);
-
-        // Update message status
-        $whatsappMessage->status = $result['success'] ? 'sent' : 'failed';
-        $whatsappMessage->response = $result;
-        $whatsappMessage->sent_at = now();
-        $whatsappMessage->save();
+        // Dispatch job to send asynchronously
+        SendWhatsAppMessage::dispatch($customer->phone, $message, [], $whatsappMessage->id);
     }
 
     /**

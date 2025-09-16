@@ -5,30 +5,40 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
-
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Payment extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'customer_id',
         'internet_package_id',
+        'payment_method_id',
         'invoice_number',
         'amount',
+        'status',
         'due_date',
         'payment_date',
-        'status',
-        'payment_method_id',
         'notes',
+        'gateway',
+        'gateway_invoice_id',
+        'gateway_payment_id',
+        'gateway_status',
+        'canceled_at',
+        'canceled_by',
+        'canceled_reason',
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'due_date' => 'date',
-        'payment_date' => 'date',
+        'due_date' => 'datetime',
+        'payment_date' => 'datetime',
+        'canceled_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo
@@ -44,6 +54,11 @@ class Payment extends Model
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function cashTransactions(): HasMany
+    {
+        return $this->hasMany(CashTransaction::class);
     }
 
     public static function generateInvoiceNumber(): string
@@ -97,23 +112,32 @@ class Payment extends Model
         throw new \Exception('Failed to generate unique invoice number after ' . $maxAttempts . ' attempts');
     }
 
-    public function generatePDF()
+    public function generatePDF(): string
     {
-        try {
-            $pdf = PDF::loadView('invoice-simple', ['payment' => $this])
-                ->setPaper('a4')
-                ->setOptions([
-                    'defaultFont' => 'sans-serif',
-                    'isRemoteEnabled' => true,
-                    'isHtml5ParserEnabled' => true,
-                    'isFontSubsettingEnabled' => true,
-                    'isPhpEnabled' => true,
-                    'chroot' => public_path(),
-                ]);
+        $pdf = Pdf::loadView('invoice', ['payment' => $this]);
+        $filename = 'invoices/' . $this->invoice_number . '.pdf';
 
-            return $pdf;
-        } catch (\Exception $e) {
-            throw new \Exception('Failed to generate PDF: ' . $e->getMessage());
-        }
+        Storage::disk('public')->put($filename, $pdf->output());
+
+        return $filename;
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('payments')
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function (string $eventName): string {
+                $verbs = [
+                    'created' => 'dibuat',
+                    'updated' => 'diperbarui',
+                    'deleted' => 'dihapus',
+                ];
+                $action = $verbs[$eventName] ?? $eventName;
+                $inv = $this->invoice_number ?? 'N/A';
+                return "Pembayaran $inv $action";
+            });
     }
 }

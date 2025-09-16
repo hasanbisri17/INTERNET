@@ -14,6 +14,9 @@ use Filament\Tables\Table;
 use App\Services\WhatsAppService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PaymentResource extends Resource
 {
@@ -85,9 +88,14 @@ class PaymentResource extends Resource
                         'pending' => 'Menunggu Pembayaran',
                         'paid' => 'Lunas',
                         'overdue' => 'Terlambat',
+                        'failed' => 'Gagal',
+                        'expired' => 'Kedaluwarsa',
+                        'refunded' => 'Dikembalikan',
+                        'canceled' => 'Dibatalkan',
                     ])
                     ->required()
-                    ->default('pending'),
+                    ->default('pending')
+                    ->disabled(),
                 Forms\Components\Select::make('payment_method_id')
                     ->label('Metode Pembayaran')
                     ->relationship('paymentMethod', 'name')
@@ -162,9 +170,10 @@ class PaymentResource extends Resource
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
                     ->colors([
-                        'danger' => 'overdue',
+                        'danger' => ['overdue','failed','expired'],
                         'warning' => 'pending',
-                        'success' => 'paid',
+                        'success' => ['paid','refunded'],
+                        'gray' => 'canceled',
                     ]),
                 Tables\Columns\TextColumn::make('paymentMethod.name')
                     ->label('Metode')
@@ -182,6 +191,10 @@ class PaymentResource extends Resource
                         'pending' => 'Menunggu Pembayaran',
                         'paid' => 'Lunas',
                         'overdue' => 'Terlambat',
+                        'failed' => 'Gagal',
+                        'expired' => 'Kedaluwarsa',
+                        'refunded' => 'Dikembalikan',
+                        'canceled' => 'Dibatalkan',
                     ]),
                 Tables\Filters\SelectFilter::make('payment_method_id')
                     ->label('Metode Pembayaran')
@@ -235,7 +248,8 @@ class PaymentResource extends Resource
                             'type' => 'income',
                             'amount' => $record->amount,
                             'description' => "Pembayaran Internet - {$record->customer->name} ({$record->invoice_number})",
-                            'category_id' => $category->id,
+                            'category_id' => $category?->id,
+                            'payment_id' => $record->id,
                         ]);
 
                         // Send WhatsApp notification for successful payment
@@ -250,7 +264,7 @@ class PaymentResource extends Resource
                                 ->send();
                         }
                     })
-                    ->visible(fn (Payment $record): bool => $record->status !== 'paid')
+                    ->visible(fn (Payment $record): bool => $record->status !== 'paid' && $record->status !== 'canceled')
                     ->successNotificationTitle('Pembayaran berhasil dicatat')
                     ->successNotification(
                         notification: function (Payment $record) {
@@ -258,6 +272,88 @@ class PaymentResource extends Resource
                                 ->success()
                                 ->title('Pembayaran berhasil dicatat')
                                 ->body("Pembayaran telah dicatat dan otomatis ditambahkan ke Kas sebagai pemasukan.\nNomor Invoice: {$record->invoice_number}\nPelanggan: {$record->customer->name}\nJumlah: Rp " . number_format($record->amount, 2));
+                        }
+                    ),
+                // Tambahkan action pembatalan tagihan
+                Tables\Actions\Action::make('cancel_invoice')
+                    ->label('Batalkan Tagihan')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Batalkan Tagihan')
+                    ->modalDescription('Pembatalan akan menandai tagihan sebagai dibatalkan dan me-void semua entri Kas terkait.')
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Alasan Pembatalan')
+                            ->required()
+                            ->maxLength(1000)
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn (Payment $record): bool => $record->status !== 'canceled')
+                    ->action(function (Payment $record, array $data): void {
+                        DB::transaction(function () use ($record, $data) {
+                            // Update payment status to canceled
+                            $record->update([
+                                'status' => 'canceled',
+                                'canceled_at' => now(),
+                                'canceled_by' => Auth::id(),
+                                'canceled_reason' => $data['reason'] ?? null,
+                            ]);
+
+                            // Void related cash transactions via relation
+                            $related = $record->cashTransactions()->get();
+                            foreach ($related as $trx) {
+                                $trx->update([
+                                    'voided_at' => now(),
+                                    'voided_by' => Auth::id(),
+                                    'void_reason' => 'Invoice dibatalkan: ' . ($data['reason'] ?? '-') ,
+                                ]);
+                            }
+
+                            // Fallback: also find by invoice number pattern in description (legacy records)
+                            if ($related->isEmpty()) {
+                                $legacyQuery = \App\Models\CashTransaction::where('description', 'LIKE', "%({$record->invoice_number})%");
+                                if (Schema::hasColumn('cash_transactions', 'voided_at')) {
+                                    $legacyQuery->whereNull('voided_at');
+                                }
+                                $legacy = $legacyQuery->get();
+                                foreach ($legacy as $trx) {
+                                    $dataToUpdate = [
+                                        'voided_by' => Auth::id(),
+                                        'void_reason' => 'Invoice dibatalkan: ' . ($data['reason'] ?? '-') ,
+                                        'payment_id' => $record->id,
+                                    ];
+                                    if (Schema::hasColumn('cash_transactions', 'voided_at')) {
+                                        $dataToUpdate['voided_at'] = now();
+                                    }
+                                    $trx->update($dataToUpdate);
+                                }
+                            }
+
+                            // Attempt gateway cancel if applicable
+                            if (!empty($record->gateway) && class_exists('App\\\\Services\\\\Payments\\\\PaymentGatewayManager')) {
+                                try {
+                                    $manager = app(\App\Services\Payments\PaymentGatewayManager::class);
+                                    $manager->cancel($record);
+                                } catch (\Throwable $e) {
+                                    // logging akan ditambahkan pada tahap Logging & Permissions
+                                }
+                            }
+                        });
+
+                        // Dispatch WA notif
+                        try {
+                            $whatsapp = new WhatsAppService();
+                            $whatsapp->sendBillingNotification($record, 'canceled');
+                        } catch (\Throwable $e) {}
+                    })
+                    ->successNotificationTitle('Tagihan dibatalkan')
+                    ->successNotification(
+                        notification: function (Payment $record) {
+                            return \Filament\Notifications\Notification::make()
+                                ->success()
+                                ->title('Tagihan berhasil dibatalkan')
+                                ->body("Nomor Invoice: {$record->invoice_number}\nPelanggan: {$record->customer->name}");
                         }
                     ),
                 Tables\Actions\EditAction::make(),
