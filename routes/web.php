@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\LogoUploadController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Middleware\VerifyCsrfToken;
 
@@ -32,5 +33,14 @@ Route::get('/invoice/{payment}/download', [InvoiceController::class, 'download']
         return redirect()->back()->with('error', 'Invoice not found');
     })
     ->name('invoice.download');
+
+// Logo Upload Routes
+Route::post('/upload/logo', [LogoUploadController::class, 'upload'])
+    ->middleware(['auth'])
+    ->name('upload.logo');
+
+Route::post('/remove/logo', [LogoUploadController::class, 'remove'])
+    ->middleware(['auth'])
+    ->name('remove.logo');
 
 require __DIR__.'/auth.php';

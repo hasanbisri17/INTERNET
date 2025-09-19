@@ -54,10 +54,23 @@
             text-align: center;
             font-size: 12px;
         }
+        .notes {
+            margin-top: 30px;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="invoice-header">
+        @if(\App\Models\Setting::get('invoice_logo'))
+            <div style="text-align: center; margin-bottom: 15px;">
+                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->path(\App\Models\Setting::get('invoice_logo')) }}" 
+                     alt="Logo Perusahaan" 
+                     style="max-height: 80px; max-width: 200px;" />
+            </div>
+        @endif
         <div class="invoice-title">INVOICE</div>
         <div>{{ config('app.name') }}</div>
     </div>
@@ -98,6 +111,17 @@
             </tr>
         </tfoot>
     </table>
+
+    @if(\App\Models\Setting::get('invoice_notes'))
+    <div class="notes">
+        <strong>Catatan:</strong><br>
+        {!! \App\Models\Setting::get('invoice_notes') !!}
+    </div>
+    @endif
+
+    <div class="footer">
+        {!! \App\Models\Setting::get('invoice_footer', 'Terima kasih atas pembayaran Anda.') !!}
+    </div>
 
     @if($payment->payment_date)
     <div class="payment-info">
