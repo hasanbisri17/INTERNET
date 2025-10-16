@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use App\Services\WhatsAppService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -161,12 +162,50 @@ class PaymentResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('due_date')
                     ->label('Jatuh Tempo')
-                    ->date()
+                    ->date('d/m/Y')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('payment_date')
                     ->label('Tgl Pembayaran')
                     ->date()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn (?Payment $record): ?string => 
+                        $record && $record->status === 'canceled' ? null : $record?->payment_date?->format('d/m/Y')
+                    ),
+                Tables\Columns\TextColumn::make('canceled_at')
+                    ->label('Tgl Pembatalan')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->formatStateUsing(function (?Payment $record): ?string {
+                        if (!$record || $record->status !== 'canceled' || !$record->canceled_at) {
+                            return '-';
+                        }
+                        return $record->canceled_at->format('d/m/Y');
+                    })
+                    ->icon(function (?Payment $record): ?string {
+                        if (!$record || $record->status !== 'canceled') {
+                            return null;
+                        }
+                        return 'heroicon-o-information-circle';
+                    })
+                    ->iconColor(function (?Payment $record): ?string {
+                        if (!$record || $record->status !== 'canceled') {
+                            return null;
+                        }
+                        return 'danger';
+                    })
+                    ->tooltip(function (?Payment $record): ?string {
+                        if (!$record || $record->status !== 'canceled') {
+                            return null;
+                        }
+                        
+                        $tooltip = "Alasan: " . ($record->canceled_reason ?? 'Tidak ada alasan');
+                        
+                        if ($record->canceled_by && $record->canceledBy) {
+                            $tooltip .= "\nDibatalkan oleh: " . $record->canceledBy->name;
+                        }
+                        
+                        return $tooltip;
+                    }),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
                     ->colors([
@@ -205,9 +244,9 @@ class PaymentResource extends Resource
                     ->label('Download Invoice')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
-                    ->url(fn (Payment $record): string => route('invoice.download', $record))
+                    ->url(fn (?Payment $record): string => $record ? route('invoice.download', $record) : '#')
                     ->openUrlInNewTab()
-                    ->visible(fn (Payment $record): bool => $record->customer && $record->internetPackage),
+                    ->visible(fn (?Payment $record): bool => $record && $record->customer && $record->internetPackage),
                 Tables\Actions\Action::make('pay')
                     ->label('Bayar')
                     ->icon('heroicon-o-credit-card')
@@ -252,10 +291,10 @@ class PaymentResource extends Resource
                             'payment_id' => $record->id,
                         ]);
 
-                        // Send WhatsApp notification for successful payment
+                        // Send WhatsApp notification for successful payment WITH PAID INVOICE PDF
                         try {
                             $whatsapp = new WhatsAppService();
-                            $whatsapp->sendBillingNotification($record, 'paid');
+                            $whatsapp->sendBillingNotification($record, 'paid', true); // true = send PDF invoice lunas
                         } catch (\Exception $e) {
                             \Filament\Notifications\Notification::make()
                                 ->warning()
@@ -264,7 +303,7 @@ class PaymentResource extends Resource
                                 ->send();
                         }
                     })
-                    ->visible(fn (Payment $record): bool => $record->status !== 'paid' && $record->status !== 'canceled')
+                    ->visible(fn (?Payment $record): bool => $record && $record->status !== 'paid')
                     ->successNotificationTitle('Pembayaran berhasil dicatat')
                     ->successNotification(
                         notification: function (Payment $record) {
@@ -289,15 +328,17 @@ class PaymentResource extends Resource
                             ->maxLength(1000)
                             ->columnSpanFull(),
                     ])
-                    ->visible(fn (Payment $record): bool => $record->status !== 'canceled')
+                    ->visible(fn (?Payment $record): bool => $record && $record->status === 'paid')
                     ->action(function (Payment $record, array $data): void {
                         DB::transaction(function () use ($record, $data) {
-                            // Update payment status to canceled
+                            // Update payment status to canceled and clear payment data
                             $record->update([
                                 'status' => 'canceled',
                                 'canceled_at' => now(),
                                 'canceled_by' => Auth::id(),
                                 'canceled_reason' => $data['reason'] ?? null,
+                                'payment_date' => null,
+                                'payment_method_id' => null,
                             ]);
 
                             // Void related cash transactions via relation
@@ -357,11 +398,37 @@ class PaymentResource extends Resource
                         }
                     ),
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (?Payment $record): bool => $record && $record->status !== 'paid')
+                    ->before(function (Payment $record) {
+                        if ($record->status === 'paid') {
+                            \Filament\Notifications\Notification::make()
+                                ->danger()
+                                ->title('Tagihan tidak dapat dihapus')
+                                ->body('Tagihan yang sudah dibayar tidak dapat dihapus karena sudah memiliki data pembayaran.')
+                                ->send();
+                                
+                            $this->halt();
+                        }
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->before(function (Collection $records) {
+                            $paidPayments = $records->filter(fn (Payment $record) => $record->status === 'paid');
+                            
+                            if ($paidPayments->count() > 0) {
+                                \Filament\Notifications\Notification::make()
+                                    ->danger()
+                                    ->title('Beberapa tagihan tidak dapat dihapus')
+                                    ->body('Tagihan yang sudah dibayar tidak dapat dihapus karena sudah memiliki data pembayaran.')
+                                    ->send();
+                                
+                                // Hanya hapus tagihan yang belum dibayar
+                                return $records->filter(fn (Payment $record) => $record->status !== 'paid');
+                            }
+                        }),
                 ]),
             ]);
     }
@@ -412,9 +479,9 @@ class PaymentResource extends Resource
                         'payment_method_id' => null, // Allow null for pending payments
                     ]);
 
-                    // Send WhatsApp notification for new bill
+                    // Send WhatsApp notification for new bill WITH PDF INVOICE
                     try {
-                        $whatsapp->sendBillingNotification($payment, 'new');
+                        $whatsapp->sendBillingNotification($payment, 'new', true); // true = send PDF
                     } catch (\Exception $e) {
                         \Filament\Notifications\Notification::make()
                             ->warning()

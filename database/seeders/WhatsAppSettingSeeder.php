@@ -10,8 +10,8 @@ class WhatsAppSettingSeeder extends Seeder
     public function run(): void
     {
         WhatsAppSetting::create([
-            'api_token' => '26mGcrLMtKX1!P9WPrXW',
-            'api_url' => 'https://api.fonnte.com',
+            'api_token' => '',
+            'api_url' => 'https://waha-pj8tw4c4otz1.wax.biz.id',
             'default_country_code' => '62',
             'is_active' => true,
         ]);

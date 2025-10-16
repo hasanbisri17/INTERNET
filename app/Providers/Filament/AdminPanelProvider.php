@@ -45,19 +45,15 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Pages\Dashboard::class,
                 \App\Filament\Pages\AnalyticsDashboard::class,
-            ])
-            ->navigationItems([
-                NavigationItem::make('Log Viewer')
-                    ->url(fn () => url(config('log-viewer.route_path', 'log-viewer')))
-                    ->icon('heroicon-o-clipboard-document-list')
-                    ->group('Manajement')
-                    ->isActiveWhen(fn (): bool => request()->is(config('log-viewer.route_path', 'log-viewer') . '*')),
+                \App\Filament\Pages\AnalyticsWidgetSettings::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
             ])
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->plugins([
                 FilamentApexChartsPlugin::make(),
             ])

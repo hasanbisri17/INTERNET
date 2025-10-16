@@ -1,224 +1,312 @@
-# Aplikasi Billing Internet
+# 🌐 Internet Management System
 
-Aplikasi manajemen billing internet dengan fitur WhatsApp notification dan pencatatan pembayaran.
+A comprehensive Laravel-based Internet Service Provider (ISP) management system with Docker support for easy deployment.
 
-## Persyaratan Sistem
+## ✨ Features
 
-- PHP >= 8.1
-- Composer
-- Node.js & NPM
-- MySQL/MariaDB
-- XAMPP/Laragon (opsional, untuk pengembangan lokal)
-- Git
+- **👥 Customer Management** - Complete customer database and billing system
+- **💳 Payment Processing** - Multiple payment gateway integration
+- **📄 Invoice Generation** - Automated invoice creation and PDF generation
+- **📱 WhatsApp Integration** - Automated notifications and payment reminders
+- **🔧 Router Management** - Mikrotik router integration for bandwidth management
+- **📊 Reporting Dashboard** - Comprehensive analytics and business reports
+- **🌍 Multi-language Support** - Indonesian and English language support
+- **📱 Responsive Design** - Mobile-friendly interface for all devices
 
-## Panduan Instalasi
+## 🚀 Quick Start
 
-### 1. Clone Repository
+### Using Docker (Recommended)
 
 ```bash
-git clone https://github.com/hasanbisri17/APK_BillingInternet.git
-cd APK_BillingInternet
+# Clone the repository
+git clone https://github.com/yourusername/internet-management-system.git
+cd internet-management-system
+
+# Copy environment file
+cp env.docker .env
+
+# Start all services
+docker-compose up -d --build
+
+# Setup database
+docker exec -it internet_app php artisan migrate --seed
 ```
 
-### 2. Install Dependencies
+### Manual Installation
 
 ```bash
+# Install dependencies
 composer install
-npm install
-npm run build
-```
+npm install && npm run build
 
-### 3. Konfigurasi Environment
-
-1. Copy file `.env.example` menjadi `.env`:
-```bash
+# Setup environment
 cp .env.example .env
-```
-
-2. Generate application key:
-```bash
 php artisan key:generate
-```
 
-3. Konfigurasi database di file `.env`:
-```
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=billing_internet
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
-4. Konfigurasi WhatsApp Gateway di file `.env`:
-```
-WHATSAPP_API_URL=
-WHATSAPP_API_KEY=
-```
-
-### 4. Migrasi Database
-
-1. Buat database baru dengan nama `billing_internet`
-
-2. Jalankan migrasi database:
-```bash
-php artisan migrate
-```
-
-3. Jalankan seeder untuk data awal:
-```bash
-php artisan db:seed
-```
-
-### 5. Menjalankan Aplikasi
-
-1. Start server Laravel:
-```bash
+# Setup database
+php artisan migrate --seed
 php artisan serve
 ```
 
-2. Akses aplikasi melalui browser:
-```
-http://localhost:8000
-```
+## 🐳 Docker Services
 
-### 6. Login Admin Default
+- **app** - Laravel application (PHP 8.2 + Apache)
+- **db** - MySQL 8.0 database
+- **redis** - Redis cache and session storage
+- **phpmyadmin** - Database management interface
 
-```
-Email: admin@admin.com
-Password: password
-```
+## 🌐 Access Points
 
-## Fitur Utama
+- **Application**: http://localhost:8000
+- **Admin Panel**: http://localhost:8000/admin
+- **phpMyAdmin**: http://localhost:8080
+- **Database**: localhost:3306
+- **Redis**: localhost:6379
 
-1. Manajemen Pelanggan
-   - Pendaftaran pelanggan baru
-   - Pengelolaan data pelanggan
-   - Riwayat pembayaran pelanggan
+## 🔧 Default Admin Credentials
 
-2. Manajemen Paket Internet
-   - Pembuatan paket internet
-   - Pengaturan harga dan kecepatan
-   - Status paket aktif/nonaktif
+- **Email**: admin@example.com
+- **Password**: password
 
-3. Pembayaran
-   - Pencatatan pembayaran bulanan
-   - Multiple metode pembayaran
-   - Generate invoice otomatis
-   - Riwayat pembayaran
+⚠️ **Important**: Change default credentials after first login!
 
-4. Notifikasi WhatsApp
-   - Pengingat pembayaran otomatis
-   - Template pesan kustomisasi
-   - Jadwal pengiriman pesan
-   - Status pengiriman pesan
+## 🚀 VPS Deployment
 
-5. Laporan Keuangan
-   - Laporan pembayaran
-   - Laporan transaksi kas
-   - Filter berdasarkan periode
-   - Export laporan
+### Automated Deployment
 
-## Panduan Penggunaan
-
-### 1. Manajemen Pelanggan
-
-1. Klik menu "Customers" di sidebar
-2. Untuk menambah pelanggan baru, klik tombol "New Customer"
-3. Isi formulir data pelanggan:
-   - Nama lengkap
-   - Nomor WhatsApp
-   - Alamat
-   - Pilih paket internet
-4. Klik "Save" untuk menyimpan
-
-### 2. Pencatatan Pembayaran
-
-1. Klik menu "Payments" di sidebar
-2. Klik tombol "New Payment"
-3. Pilih pelanggan
-4. Isi detail pembayaran:
-   - Tanggal pembayaran
-   - Periode pembayaran
-   - Metode pembayaran
-   - Jumlah pembayaran
-5. Klik "Save" untuk menyimpan
-6. Invoice akan ter-generate otomatis
-
-### 3. Pengaturan WhatsApp
-
-1. Klik menu "WhatsApp Settings"
-2. Masukkan kredensial WhatsApp Gateway
-3. Atur template pesan default
-4. Aktifkan/nonaktifkan fitur reminder otomatis
-
-### 4. Laporan
-
-1. Klik menu "Reports" di sidebar
-2. Pilih jenis laporan
-3. Atur filter periode
-4. Klik "Generate" untuk melihat laporan
-5. Gunakan tombol "Export" untuk mengunduh laporan
-
-## Pemeliharaan
-
-### Backup Database
-
-Jalankan perintah berikut untuk backup database:
 ```bash
-php artisan backup:run
+# Download deployment script
+wget https://raw.githubusercontent.com/yourusername/internet-management-system/main/vps-deploy.sh
+chmod +x vps-deploy.sh
+
+# Edit configuration
+nano vps-deploy.sh
+
+# Run deployment
+./vps-deploy.sh
 ```
 
-### Update Aplikasi
+### Manual VPS Setup
 
-1. Pull perubahan terbaru:
 ```bash
-git pull origin main
+# Clone repository
+git clone https://github.com/yourusername/internet-management-system.git
+cd internet-management-system
+
+# Setup environment
+cp env.vps .env
+nano .env  # Edit configuration
+
+# Deploy with Docker Compose
+docker-compose -f docker-compose.vps.yml up -d --build
+
+# Setup database
+docker exec internet_app_prod php artisan migrate --seed
 ```
 
-2. Update dependencies:
+## 📋 Requirements
+
+### System Requirements
+- **PHP**: 8.1 or higher
+- **MySQL**: 8.0 or higher
+- **Redis**: 6.0 or higher
+- **Node.js**: 16.0 or higher
+- **Composer**: 2.0 or higher
+
+### Docker Requirements
+- **Docker**: 20.0 or higher
+- **Docker Compose**: 2.0 or higher
+
+### VPS Requirements
+- **OS**: Ubuntu 20.04+ or CentOS 8+
+- **RAM**: 2GB minimum (4GB recommended)
+- **Storage**: 20GB SSD minimum
+- **CPU**: 2 cores minimum
+
+## 🛠️ Development
+
+### Prerequisites
+- Docker Desktop
+- Docker Compose
+- Git
+
+### Setup Development Environment
+
 ```bash
-composer update
-npm update
+# Clone repository
+git clone https://github.com/yourusername/internet-management-system.git
+cd internet-management-system
+
+# Start development environment
+docker-compose up -d
+
+# Install dependencies
+docker exec -it internet_app composer install
+docker exec -it internet_app npm install
+
+# Build assets
+docker exec -it internet_app npm run build
+
+# Run migrations
+docker exec -it internet_app php artisan migrate --seed
 ```
 
-3. Jalankan migrasi jika ada perubahan database:
+### Useful Commands
+
 ```bash
-php artisan migrate
+# View logs
+docker-compose logs -f app
+
+# Access container
+docker exec -it internet_app bash
+
+# Clear cache
+docker exec -it internet_app php artisan optimize:clear
+
+# Run tests
+docker exec -it internet_app php artisan test
 ```
 
-## Troubleshooting
+## 📚 Documentation
 
-### 1. Masalah Umum
+- [Installation Guide](docs/INSTALLATION.md)
+- [VPS Deployment Guide](VPS_DEPLOYMENT_GUIDE.md)
+- [Docker Setup Guide](DOCKER_SETUP.md)
+- [API Documentation](docs/API.md)
+- [Configuration Guide](docs/CONFIGURATION.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-1. **Error 500**
-   - Periksa file `.env`
-   - Periksa permission folder storage
-   - Periksa log di `storage/logs`
+## 🔧 Configuration
 
-2. **WhatsApp tidak terkirim**
-   - Periksa kredensial WhatsApp Gateway
-   - Periksa format nomor tujuan
-   - Periksa log WhatsApp di menu "WhatsApp Messages"
+### Environment Variables
 
-### 2. Solusi
+```env
+# Application
+APP_NAME="Internet Management System"
+APP_ENV=production
+APP_KEY=base64:your-app-key
+APP_URL=https://your-domain.com
 
-1. Reset permission folder:
+# Database
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_DATABASE=internet_db
+DB_USERNAME=internet_user
+DB_PASSWORD=your-password
+
+# Cache & Session
+CACHE_DRIVER=redis
+SESSION_DRIVER=redis
+REDIS_HOST=redis
+
+# Mail
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+
+# WhatsApp (optional)
+WHATSAPP_API_URL=https://api.whatsapp.com
+WHATSAPP_API_TOKEN=your-token
+
+# Mikrotik (optional)
+MIKROTIK_HOST=192.168.1.1
+MIKROTIK_USERNAME=admin
+MIKROTIK_PASSWORD=your-password
+```
+
+## 🧪 Testing
+
 ```bash
-chmod -R 775 storage bootstrap/cache
+# Run all tests
+php artisan test
+
+# Run specific test
+php artisan test --filter=CustomerTest
+
+# Run with coverage
+php artisan test --coverage
 ```
 
-2. Clear cache:
+## 📈 Performance
+
+### Optimization Tips
+
 ```bash
-php artisan cache:clear
-php artisan config:clear
-php artisan view:clear
+# Clear cache
+php artisan optimize:clear
+
+# Optimize for production
+php artisan optimize
+
+# Queue processing
+php artisan queue:work --daemon
 ```
 
-## Dukungan
+### Monitoring
 
-Jika mengalami masalah atau membutuhkan bantuan, silakan buat issue di repository GitHub atau hubungi tim support.
+```bash
+# Check container status
+docker-compose ps
 
-## Lisensi
+# Monitor resource usage
+docker stats
 
-Aplikasi ini bersifat private dan hanya untuk penggunaan yang diizinkan.
+# View logs
+docker-compose logs -f app
+```
+
+## 🔒 Security
+
+- **Authentication**: Laravel Sanctum
+- **Authorization**: Role-based access control
+- **CSRF Protection**: Built-in CSRF tokens
+- **SQL Injection**: Eloquent ORM protection
+- **XSS Protection**: Blade templating engine
+- **HTTPS**: SSL/TLS encryption support
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Guidelines
+
+- Follow PSR-12 coding standards
+- Write tests for new features
+- Update documentation
+- Use meaningful commit messages
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/internet-management-system/issues)
+- **Documentation**: [Wiki](https://github.com/yourusername/internet-management-system/wiki)
+- **Email**: support@yourcompany.com
+
+## 🙏 Acknowledgments
+
+- [Laravel](https://laravel.com) - The PHP framework
+- [Filament](https://filamentphp.com) - Admin panel
+- [Tailwind CSS](https://tailwindcss.com) - CSS framework
+- [Docker](https://docker.com) - Containerization platform
+
+## 📊 Project Status
+
+![Build Status](https://github.com/yourusername/internet-management-system/workflows/Build%20and%20Test/badge.svg)
+![Deploy Status](https://github.com/yourusername/internet-management-system/workflows/Deploy%20to%20VPS/badge.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![PHP Version](https://img.shields.io/badge/PHP-8.2-green.svg)
+![Laravel Version](https://img.shields.io/badge/Laravel-10.x-red.svg)
+
+---
+
+Made with ❤️ for Internet Service Providers
+
+**Star ⭐ this repository if you find it helpful!**

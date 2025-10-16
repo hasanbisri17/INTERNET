@@ -171,18 +171,47 @@ class ActivityResource extends Resource
     private static function localizeLogName(?string $state): string
     {
         $map = [
+            // Customer & Payments
             'customers' => 'Pelanggan',
             'payments' => 'Pembayaran',
             'cash_transactions' => 'Transaksi Kas',
+            
+            // Users & Auth
             'users' => 'Pengguna',
+            'auth' => 'Autentikasi',
+            'roles' => 'Role',
+            'permissions' => 'Permission',
+            
+            // Internet Packages & Config
             'internet_packages' => 'Paket Internet',
+            'mikrotik_devices' => 'Perangkat Mikrotik',
+            
+            // Payment Methods & Categories
             'payment_methods' => 'Metode Pembayaran',
             'transaction_categories' => 'Kategori Transaksi',
+            
+            // WhatsApp
             'whats_app_messages' => 'Pesan WhatsApp',
             'whatsapp_settings' => 'Pengaturan WhatsApp',
             'whatsapp_templates' => 'Template WhatsApp',
             'whatsapp_scheduled_messages' => 'Pesan Terjadwal WhatsApp',
-            'auth' => 'Autentikasi',
+            'whatsapp_notifications' => 'Notifikasi WhatsApp',
+            'broadcast_campaigns' => 'Broadcast Campaign',
+            
+            // Payment Reminders
+            'payment_reminders' => 'Reminder Pembayaran',
+            'payment_reminder_rules' => 'Aturan Reminder',
+            
+            // Dunning System
+            'dunning' => 'Penagihan Otomatis',
+            'dunning_configs' => 'Konfigurasi Dunning',
+            'dunning_schedules' => 'Jadwal Dunning',
+            'dunning_steps' => 'Langkah Dunning',
+            
+            // Settings
+            'settings' => 'Pengaturan',
+            'aaa_configs' => 'Konfigurasi AAA',
+            'customer_portal_configs' => 'Konfigurasi Portal',
         ];
         return $map[$state] ?? ($state ?? '-');
     }

@@ -24,8 +24,8 @@ class GeneralSettings extends Page implements HasForms
     protected static ?string $navigationLabel = 'Pengaturan Aplikasi';
 
     protected static ?string $title = 'Pengaturan Aplikasi';
-
-    protected static ?string $navigationGroup = 'Sistem';
+    
+    protected static bool $shouldRegisterNavigation = false;
     
     protected static ?int $navigationSort = 1;
 

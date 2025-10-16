@@ -17,8 +17,11 @@ class WhatsAppMessage extends Model
     protected $fillable = [
         'customer_id',
         'payment_id',
+        'broadcast_campaign_id',
         'message_type',
         'message',
+        'media_path',
+        'media_type',
         'status',
         'response',
         'sent_at',
@@ -28,7 +31,6 @@ class WhatsAppMessage extends Model
     protected $casts = [
         'sent_at' => 'datetime',
         'scheduled_at' => 'datetime',
-        'response' => 'array',
     ];
 
     public function customer(): BelongsTo
@@ -39,6 +41,11 @@ class WhatsAppMessage extends Model
     public function payment(): BelongsTo
     {
         return $this->belongsTo(Payment::class);
+    }
+
+    public function broadcastCampaign(): BelongsTo
+    {
+        return $this->belongsTo(BroadcastCampaign::class);
     }
 
     /**

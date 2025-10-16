@@ -17,6 +17,7 @@ class WhatsAppSetting extends Model
         'api_url',
         'default_country_code',
         'is_active',
+        'session',
     ];
 
     protected $casts = [

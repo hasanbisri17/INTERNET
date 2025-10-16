@@ -9,6 +9,16 @@ use App\Http\Middleware\VerifyCsrfToken;
 
 Route::redirect('/', '/admin');
 
+// Health check route untuk Docker
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now(),
+        'version' => '1.0.0',
+        'database' => DB::connection()->getPdo() ? 'connected' : 'disconnected'
+    ]);
+})->name('health');
+
 // GitHub Webhook route
 Route::match(['get', 'post'], '/webhook', [WebhookController::class, 'handle'])->name('webhook');
 
@@ -18,8 +28,7 @@ Route::match(['get','post'], '/webhooks/payments/{gateway}', [PaymentWebhookCont
     ->withoutMiddleware(VerifyCsrfToken::class)
     ->name('webhooks.payments');
 
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
+Route::redirect('/dashboard', '/admin')
     ->name('dashboard');
 
 Route::view('profile', 'profile')

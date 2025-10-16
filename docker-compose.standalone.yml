@@ -1,0 +1,126 @@
+# Internet Management System - Plug & Play Docker Compose
+# Seperti Portainer, WAHA, dll - langsung bisa digunakan setelah docker-compose up
+# Support untuk localhost dan VPS deployment
+
+version: '3.8'
+
+services:
+  internet-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.standalone
+    container_name: internet-management-system
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"  # Port utama aplikasi (default 8080)
+      - "${HTTPS_PORT:-8443}:443" # HTTPS port (default 8443)
+    environment:
+      # Application Settings
+      - APP_NAME=${APP_NAME:-Internet Management System}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_URL=${APP_URL:-http://localhost:8080}
+      
+      # Database Settings (SQLite untuk kemudahan)
+      - DB_CONNECTION=${DB_CONNECTION:-sqlite}
+      - DB_DATABASE=${DB_DATABASE:-/var/www/html/database/database.sqlite}
+      
+      # Cache Settings
+      - CACHE_DRIVER=${CACHE_DRIVER:-file}
+      - SESSION_DRIVER=${SESSION_DRIVER:-file}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-sync}
+      
+      # Mail Settings (default)
+      - MAIL_MAILER=${MAIL_MAILER:-log}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-noreply@internet-management.local}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME:-Internet Management System}
+      
+      # Security
+      - SANCTUM_STATEFUL_DOMAINS=${SANCTUM_STATEFUL_DOMAINS:-localhost:8080}
+      - SESSION_DOMAIN=${SESSION_DOMAIN:-localhost}
+      
+      # Timezone
+      - APP_TIMEZONE=${APP_TIMEZONE:-Asia/Jakarta}
+      
+      # Auto-setup flags
+      - AUTO_SETUP=${AUTO_SETUP:-true}
+      - AUTO_MIGRATE=${AUTO_MIGRATE:-true}
+      - AUTO_SEED=${AUTO_SEED:-true}
+      
+      # VPS Detection
+      - VPS_MODE=${VPS_MODE:-false}
+      - VPS_IP=${VPS_IP:-}
+      - VPS_DOMAIN=${VPS_DOMAIN:-}
+      
+    volumes:
+      # Persist data
+      - internet_data:/var/www/html/storage
+      - internet_database:/var/www/html/database
+      - internet_logs:/var/www/html/storage/logs
+      
+      # Optional: Custom config
+      - ./custom.env:/var/www/html/.env.custom:ro
+      
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.internet-app.rule=Host(`${VPS_DOMAIN:-localhost}`)"
+      - "traefik.http.services.internet-app.loadbalancer.server.port=80"
+      
+    networks:
+      - internet-network
+
+  # Optional: Redis untuk performa lebih baik
+  redis:
+    image: redis:7-alpine
+    container_name: internet-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - internet-network
+    profiles:
+      - redis  # Optional service
+
+  # Optional: MySQL untuk production
+  mysql:
+    image: mysql:8.0
+    container_name: internet-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-internet_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-internet_db}
+      MYSQL_USER: ${MYSQL_USER:-internet_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-internet_password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    networks:
+      - internet-network
+    profiles:
+      - mysql  # Optional service
+
+volumes:
+  internet_data:
+    driver: local
+  internet_database:
+    driver: local
+  internet_logs:
+    driver: local
+  redis_data:
+    driver: local
+  mysql_data:
+    driver: local
+
+networks:
+  internet-network:
+    driver: bridge

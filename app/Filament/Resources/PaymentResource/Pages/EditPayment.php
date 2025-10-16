@@ -13,7 +13,19 @@ class EditPayment extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->visible(fn () => $this->record->status !== 'paid')
+                ->before(function () {
+                    if ($this->record->status === 'paid') {
+                        \Filament\Notifications\Notification::make()
+                            ->danger()
+                            ->title('Tagihan tidak dapat dihapus')
+                            ->body('Tagihan yang sudah dibayar tidak dapat dihapus karena sudah memiliki data pembayaran.')
+                            ->send();
+                            
+                        $this->halt();
+                    }
+                }),
         ];
     }
 
@@ -35,5 +47,33 @@ class EditPayment extends EditRecord
         }
 
         return $data;
+    }
+    
+    protected function afterSave(): void
+    {
+        // Jika status pembayaran adalah 'paid', kirim notifikasi WhatsApp WITH PDF INVOICE
+        if ($this->record->status === 'paid' && $this->record->payment_date) {
+            try {
+                $whatsapp = new \App\Services\WhatsAppService();
+                $whatsapp->sendBillingNotification($this->record, 'paid', true); // true = send PDF invoice lunas
+                
+                \Filament\Notifications\Notification::make()
+                    ->success()
+                    ->title('Notifikasi WhatsApp Terkirim')
+                    ->body('Notifikasi pembayaran + invoice PDF berhasil dikirim ke pelanggan.')
+                    ->send();
+            } catch (\Exception $e) {
+                \Filament\Notifications\Notification::make()
+                    ->warning()
+                    ->title('Notifikasi WhatsApp Gagal')
+                    ->body('Gagal mengirim notifikasi WhatsApp: ' . $e->getMessage())
+                    ->send();
+                
+                \Illuminate\Support\Facades\Log::error('Gagal mengirim notifikasi WhatsApp pembayaran', [
+                    'payment_id' => $this->record->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
     }
 }

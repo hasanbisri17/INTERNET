@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "dd0a6036e502837cc3a51c42e78c30ef",
+    "content-hash": "dcb107b0f10107f4c1c3f2b4e0e1853e",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -1216,16 +1216,16 @@
         },
         {
             "name": "evilfreelancer/routeros-api-php",
-            "version": "1.5.6",
+            "version": "1.6.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/EvilFreelancer/routeros-api-php.git",
-                "reference": "f07c7fada3f37c3c3579f78f5f3b6403ee85ef58"
+                "reference": "dd7bf44c461054c0101119154de21f8c8b8f4512"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/EvilFreelancer/routeros-api-php/zipball/f07c7fada3f37c3c3579f78f5f3b6403ee85ef58",
-                "reference": "f07c7fada3f37c3c3579f78f5f3b6403ee85ef58",
+                "url": "https://api.github.com/repos/EvilFreelancer/routeros-api-php/zipball/dd7bf44c461054c0101119154de21f8c8b8f4512",
+                "reference": "dd7bf44c461054c0101119154de21f8c8b8f4512",
                 "shasum": ""
             },
             "require": {
@@ -1283,7 +1283,7 @@
             ],
             "support": {
                 "issues": "https://github.com/EvilFreelancer/routeros-api-php/issues",
-                "source": "https://github.com/EvilFreelancer/routeros-api-php/tree/1.5.6"
+                "source": "https://github.com/EvilFreelancer/routeros-api-php/tree/1.6.0"
             },
             "funding": [
                 {
@@ -1295,7 +1295,7 @@
                     "type": "custom"
                 }
             ],
-            "time": "2025-07-27T19:39:24+00:00"
+            "time": "2025-09-15T10:19:30+00:00"
         },
         {
             "name": "filament/actions",

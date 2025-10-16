@@ -17,7 +17,7 @@ class TransactionCategory extends Model
         'description',
     ];
 
-    public function transactions(): HasMany
+    public function cashTransactions(): HasMany
     {
         return $this->hasMany(CashTransaction::class, 'category_id');
     }

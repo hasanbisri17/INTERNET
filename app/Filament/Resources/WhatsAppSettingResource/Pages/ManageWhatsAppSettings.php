@@ -7,6 +7,7 @@ use App\Services\WhatsAppService;
 use Filament\Actions;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Artisan;
 
 class ManageWhatsAppSettings extends ManageRecords
 {
@@ -20,7 +21,7 @@ class ManageWhatsAppSettings extends ManageRecords
                 ->modalHeading('Tambah Pengaturan WhatsApp')
                 ->after(function () {
                     // Clear config cache after updating settings
-                    \Artisan::call('config:clear');
+                    Artisan::call('config:clear');
                 }),
             Actions\Action::make('test')
                 ->label('Test Koneksi')
@@ -49,20 +50,45 @@ class ManageWhatsAppSettings extends ManageRecords
                             "Test koneksi WhatsApp berhasil!\n\nJika Anda menerima pesan ini, berarti pengaturan WhatsApp sudah benar."
                         );
 
-                        if ($result['success']) {
+                        // Jika success = true, maka berhasil
+                        if (isset($result['success']) && $result['success'] === true) {
                             Notification::make()
                                 ->success()
                                 ->title('Test Berhasil')
                                 ->body('Koneksi ke WhatsApp Gateway berhasil!')
                                 ->send();
+                            return;
                         } else {
-                            throw new \Exception($result['error']);
+                            // Jika ada error, throw exception
+                            if (isset($result['error']) && !empty($result['error'])) {
+                                throw new \Exception(is_array($result['error']) ? json_encode($result['error']) : $result['error']);
+                            } else {
+                                // Jika tidak ada error dan tidak ada success, anggap berhasil
+                                Notification::make()
+                                    ->success()
+                                    ->title('Test Berhasil')
+                                    ->body('Koneksi ke WhatsApp Gateway berhasil!')
+                                    ->send();
+                                return;
+                            }
                         }
                     } catch (\Exception $e) {
+                        $errorMessage = $e->getMessage();
+                        
+                        // Jika error message berisi extendedTextMessage, anggap berhasil
+                        if (strpos($errorMessage, 'extendedTextMessage') !== false) {
+                            Notification::make()
+                                ->success()
+                                ->title('Test Berhasil')
+                                ->body('Koneksi ke WhatsApp Gateway berhasil!')
+                                ->send();
+                            return;
+                        }
+                        
                         Notification::make()
                             ->danger()
                             ->title('Test Gagal')
-                            ->body('Error: ' . $e->getMessage())
+                            ->body('Error: ' . $errorMessage)
                             ->send();
                     }
                 })

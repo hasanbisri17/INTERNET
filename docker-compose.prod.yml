@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: internet_app_prod
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    ports:
+      - "80:80"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=internet_db
+      - DB_USERNAME=internet_user
+      - DB_PASSWORD=internet_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - internet_network
+
+  db:
+    image: mysql:8.0
+    container_name: internet_db_prod
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: internet_db
+      MYSQL_USER: internet_user
+      MYSQL_PASSWORD: internet_password
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - db_data_prod:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - internet_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: internet_redis_prod
+    restart: unless-stopped
+    volumes:
+      - redis_data_prod:/data
+    networks:
+      - internet_network
+
+volumes:
+  db_data_prod:
+  redis_data_prod:
+
+networks:
+  internet_network:
+    driver: bridge

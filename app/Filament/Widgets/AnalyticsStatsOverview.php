@@ -10,6 +10,15 @@ use Filament\Widgets\StatsOverviewWidget\Card;
 class AnalyticsStatsOverview extends BaseWidget
 {
     protected ?string $heading = 'Ringkasan (Bulan Ini)';
+    
+    protected static bool $shouldRegisterNavigation = false;
+
+    public function getHeading(): ?string
+    {
+        // Cek apakah ada custom heading yang disimpan dalam cache
+        $customHeading = cache()->get('analytics_widget_custom_heading_' . static::class);
+        return $customHeading ?: $this->heading;
+    }
 
     protected function getCards(): array
     {

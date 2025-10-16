@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use App\Models\User;
 
 class Payment extends Model
 {
@@ -46,6 +47,11 @@ class Payment extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function reminders()
+    {
+        return $this->hasMany(PaymentReminder::class);
+    }
+
     public function internetPackage(): BelongsTo
     {
         return $this->belongsTo(InternetPackage::class);
@@ -54,6 +60,11 @@ class Payment extends Model
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function canceledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'canceled_by');
     }
 
     public function cashTransactions(): HasMany

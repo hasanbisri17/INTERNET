@@ -12,7 +12,7 @@ class InvoiceController extends Controller
     public function download(Payment $payment)
     {
         try {
-            if (!$payment->customer || !$payment->internetPackage) {
+            if (!$payment->customer) {
                 return back()->with('error', 'Invalid payment data');
             }
 
@@ -24,8 +24,8 @@ class InvoiceController extends Controller
 
             $filePath = $tempPath . '/' . $payment->invoice_number . '.pdf';
 
-            // Generate PDF
-            $pdf = PDF::loadView('invoice-simple', ['payment' => $payment])
+            // Generate PDF with modern template
+            $pdf = PDF::loadView('invoice-modern', ['payment' => $payment])
                 ->setPaper('a4');
 
             // Save to temp file

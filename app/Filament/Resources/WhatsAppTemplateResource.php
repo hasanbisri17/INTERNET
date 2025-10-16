@@ -28,31 +28,83 @@ class WhatsAppTemplateResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->label('Nama Template')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('code')
-                    ->label('Kode Template')
-                    ->required()
-                    ->maxLength(255)
-                    ->unique(ignoreRecord: true),
-                Forms\Components\Textarea::make('content')
-                    ->label('Isi Pesan')
-                    ->required()
-                    ->maxLength(65535)
-                    ->helperText('Gunakan {variable} untuk memasukkan variabel dinamis'),
-                Forms\Components\Textarea::make('description')
-                    ->label('Deskripsi')
-                    ->maxLength(65535),
-                Forms\Components\TagsInput::make('variables')
-                    ->label('Variabel')
-                    ->helperText('Variabel yang dapat digunakan dalam template (tanpa kurung kurawal)')
-                    ->placeholder('Tambahkan variabel'),
-                Forms\Components\Toggle::make('is_active')
-                    ->label('Aktif')
-                    ->default(true)
-                    ->required(),
+                Forms\Components\Section::make('Informasi Template')
+                    ->description('Tentukan jenis template dan informasi dasar')
+                    ->schema([
+                        Forms\Components\Select::make('template_type')
+                            ->label('Jenis Template')
+                            ->options(WhatsAppTemplate::getTemplateTypes())
+                            ->required()
+                            ->searchable()
+                            ->native(false)
+                            ->helperText('Pilih jenis template untuk menentukan kapan template ini digunakan'),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Nama Template')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->placeholder('Contoh: Tagihan Baru Modern'),
+
+                                Forms\Components\TextInput::make('code')
+                                    ->label('Kode Template')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->unique(ignoreRecord: true)
+                                    ->placeholder('Contoh: billing.new.v2')
+                                    ->helperText('Kode unik untuk template ini'),
+                            ]),
+
+                        Forms\Components\TextInput::make('order')
+                            ->label('Urutan')
+                            ->numeric()
+                            ->default(0)
+                            ->helperText('Urutan prioritas jika ada beberapa template dengan jenis yang sama (angka kecil = prioritas tinggi)'),
+
+                        Forms\Components\Textarea::make('description')
+                            ->label('Deskripsi')
+                            ->rows(2)
+                            ->maxLength(65535)
+                            ->placeholder('Jelaskan kapan template ini digunakan')
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible()
+                    ->columns(1),
+
+                Forms\Components\Section::make('Konten Pesan')
+                    ->description('Tulis isi pesan template dengan variabel')
+                    ->schema([
+                        Forms\Components\Textarea::make('content')
+                            ->label('Isi Pesan')
+                            ->required()
+                            ->rows(10)
+                            ->maxLength(65535)
+                            ->helperText('Gunakan {variable} untuk memasukkan variabel dinamis. Contoh: {customer_name}, {amount}')
+                            ->placeholder('Yth. {customer_name},' . "\n\n" . 'Tagihan internet Anda...')
+                            ->columnSpanFull(),
+
+                        Forms\Components\TagsInput::make('variables')
+                            ->label('Variabel yang Tersedia')
+                            ->helperText('Daftar variabel yang dapat digunakan dalam template (tanpa kurung kurawal)')
+                            ->placeholder('Contoh: customer_name, amount, due_date')
+                            ->splitKeys(['Tab', ','])
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible()
+                    ->columns(1),
+
+                Forms\Components\Section::make('Status')
+                    ->schema([
+                        Forms\Components\Toggle::make('is_active')
+                            ->label('Aktif')
+                            ->default(true)
+                            ->required()
+                            ->helperText('Hanya template yang aktif yang akan digunakan oleh sistem')
+                            ->inline(false),
+                    ])
+                    ->collapsible()
+                    ->columns(1),
                 Forms\Components\Section::make('Preview')
                     ->description('Contoh pesan dengan variabel yang diisi')
                     ->schema([
@@ -78,24 +130,72 @@ class WhatsAppTemplateResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('template_type')
+                    ->label('Jenis Template')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => WhatsAppTemplate::getTemplateTypes()[$state] ?? $state)
+                    ->color(fn (string $state): string => match($state) {
+                        WhatsAppTemplate::TYPE_BILLING_NEW => 'info',
+                        WhatsAppTemplate::TYPE_BILLING_REMINDER_1 => 'warning',
+                        WhatsAppTemplate::TYPE_BILLING_REMINDER_2 => 'warning',
+                        WhatsAppTemplate::TYPE_BILLING_REMINDER_3 => 'danger',
+                        WhatsAppTemplate::TYPE_BILLING_OVERDUE => 'danger',
+                        WhatsAppTemplate::TYPE_BILLING_PAID => 'success',
+                        WhatsAppTemplate::TYPE_SERVICE_SUSPENDED => 'danger',
+                        WhatsAppTemplate::TYPE_SERVICE_REACTIVATED => 'success',
+                        default => 'gray',
+                    })
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Nama')
-                    ->searchable(),
+                    ->label('Nama Template')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+
                 Tables\Columns\TextColumn::make('code')
                     ->label('Kode')
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable()
+                    ->size('sm')
+                    ->color('gray'),
+
                 Tables\Columns\TextColumn::make('description')
                     ->label('Deskripsi')
-                    ->limit(50),
+                    ->limit(50)
+                    ->wrap()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('order')
+                    ->label('Urutan')
+                    ->sortable()
+                    ->alignCenter()
+                    ->toggleable(),
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Status')
-                    ->boolean(),
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Diperbarui')
-                    ->dateTime()
-                    ->sortable(),
+                    ->dateTime('d M Y, H:i')
+                    ->sortable()
+                    ->toggleable(),
             ])
+            ->defaultSort('order', 'asc')
             ->filters([
+                Tables\Filters\SelectFilter::make('template_type')
+                    ->label('Jenis Template')
+                    ->options(WhatsAppTemplate::getTemplateTypes())
+                    ->multiple()
+                    ->searchable(),
+
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Status')
                     ->placeholder('Semua Status')

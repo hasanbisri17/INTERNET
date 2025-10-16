@@ -3,29 +3,22 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\View;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
+use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Storage;
+use Filament\Support\Exceptions\Halt;
+use Filament\Notifications\Notification;
 
-class InvoiceSettings extends Page implements HasForms
+class InvoiceSettings extends Page
 {
-    use InteractsWithForms;
-
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-
     protected static ?string $navigationLabel = 'Pengaturan Invoice';
-
     protected static ?string $title = 'Pengaturan Invoice';
-
-    protected static ?string $navigationGroup = 'Sistem';
+    protected static ?string $navigationGroup = 'Pengaturan';
+    protected static ?int $navigationSort = 10;
+    
+    // Hide from navigation - sekarang digabung di "Pengaturan Sistem"
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string $view = 'filament.pages.invoice-settings';
 
@@ -34,83 +27,145 @@ class InvoiceSettings extends Page implements HasForms
     public function mount(): void
     {
         $this->form->fill([
-            'invoice_logo' => Setting::get('invoice_logo'),
-            'invoice_footer' => Setting::get('invoice_footer', 'Terima kasih atas pembayaran Anda.'),
-            'invoice_notes' => Setting::get('invoice_notes', 'Catatan: Pembayaran harus dilakukan sebelum tanggal jatuh tempo.'),
+            'company_name' => Setting::get('company_name', config('app.name', 'Internet Provider')),
+            'company_address' => Setting::get('company_address', ''),
+            'company_phone' => Setting::get('company_phone', ''),
+            'company_email' => Setting::get('company_email', ''),
+            'bank_name' => Setting::get('bank_name', ''),
+            'bank_account' => Setting::get('bank_account', ''),
+            'bank_account_name' => Setting::get('bank_account_name', ''),
+            'payment_notes' => Setting::get('payment_notes', 'Silakan transfer ke rekening di atas atau hubungi kami untuk metode pembayaran lainnya.'),
+            'invoice_footer' => Setting::get('invoice_footer', 'Terima kasih atas kepercayaan Anda menggunakan layanan kami.'),
+            'billing_due_day' => Setting::get('billing_due_day', '25'),
         ]);
-        
-        $this->registerListeners();
-    }
-    
-    protected function registerListeners(): void
-    {
-        $this->listeners = [
-            'logo-uploaded' => 'handleLogoUploaded',
-            'logo-removed' => 'handleLogoRemoved',
-        ];
-    }
-    
-    public function handleLogoUploaded($data): void
-    {
-        $this->data['invoice_logo'] = $data['path'];
-    }
-    
-    public function handleLogoRemoved(): void
-    {
-        $this->data['invoice_logo'] = null;
     }
 
     public function form(Form $form): Form
     {
         return $form
             ->schema([
-                Section::make('Logo Invoice')
-                    ->description('Upload logo untuk ditampilkan pada invoice')
+                Forms\Components\Section::make('Informasi Perusahaan')
+                    ->description('Informasi ini akan ditampilkan di bagian header invoice')
                     ->schema([
-                        View::make('components.logo-drag-drop')
-                            ->label('Logo')
-                            ->columnSpan(2),
-                        FileUpload::make('invoice_logo')
-                            ->label('Logo (Alternatif)')
-                            ->helperText('Anda juga dapat menggunakan uploader standar ini jika drag-drop tidak berfungsi.')
-                            ->image()
-                            ->imageEditor()
-                            ->disk('public')
-                            ->directory('logos')
-                            ->visibility('public')
-                            ->imagePreviewHeight('150')
-                            ->maxSize(1024)
-                            ->hidden(fn () => true) // Sembunyikan uploader standar, tapi tetap berfungsi
-                    ])->columnSpan(2),
+                        Forms\Components\TextInput::make('company_name')
+                            ->label('Nama Perusahaan')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('PT. Internet Provider Indonesia')
+                            ->helperText('Nama perusahaan yang akan ditampilkan di invoice'),
 
-                Section::make('Teks Invoice')
-                    ->description('Kustomisasi teks yang ditampilkan pada invoice')
+                        Forms\Components\Textarea::make('company_address')
+                            ->label('Alamat Perusahaan')
+                            ->required()
+                            ->rows(3)
+                            ->placeholder('Jl. Contoh No. 123, Kota, Provinsi 12345')
+                            ->helperText('Alamat lengkap perusahaan'),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('company_phone')
+                                    ->label('Nomor Telepon')
+                                    ->required()
+                                    ->tel()
+                                    ->placeholder('021-12345678 atau 0812-3456-7890')
+                                    ->helperText('Nomor telepon yang bisa dihubungi'),
+
+                                Forms\Components\TextInput::make('company_email')
+                                    ->label('Email Perusahaan')
+                                    ->required()
+                                    ->email()
+                                    ->placeholder('info@company.com')
+                                    ->helperText('Email untuk korespondensi'),
+                            ]),
+                    ])
+                    ->collapsible(),
+
+                Forms\Components\Section::make('Informasi Pembayaran')
+                    ->description('Informasi rekening bank yang akan ditampilkan di invoice untuk pembayaran')
                     ->schema([
-                        RichEditor::make('invoice_footer')
-                            ->label('Footer Invoice')
-                            ->helperText('Teks yang akan ditampilkan di bagian bawah invoice')
-                            ->columnSpan(2),
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('bank_name')
+                                    ->label('Nama Bank')
+                                    ->required()
+                                    ->placeholder('Bank BCA / Bank Mandiri / Bank BRI')
+                                    ->helperText('Nama bank untuk transfer'),
 
-                        RichEditor::make('invoice_notes')
-                            ->label('Catatan Invoice')
-                            ->helperText('Catatan tambahan yang akan ditampilkan pada invoice')
-                            ->columnSpan(2),
-                    ])->columns(2),
+                                Forms\Components\TextInput::make('bank_account')
+                                    ->label('Nomor Rekening')
+                                    ->required()
+                                    ->placeholder('1234567890')
+                                    ->helperText('Nomor rekening bank'),
+                            ]),
+
+                        Forms\Components\TextInput::make('bank_account_name')
+                            ->label('Nama Pemilik Rekening')
+                            ->required()
+                            ->placeholder('PT. Internet Provider Indonesia')
+                            ->helperText('Atas nama rekening bank'),
+
+                        Forms\Components\Textarea::make('payment_notes')
+                            ->label('Catatan Pembayaran')
+                            ->rows(3)
+                            ->placeholder('Silakan transfer ke rekening di atas...')
+                            ->helperText('Catatan tambahan mengenai pembayaran (opsional)'),
+                    ])
+                    ->collapsible(),
+
+                Forms\Components\Section::make('Pengaturan Tagihan')
+                    ->description('Pengaturan tanggal jatuh tempo untuk tagihan bulanan')
+                    ->schema([
+                        Forms\Components\Select::make('billing_due_day')
+                            ->label('Tanggal Jatuh Tempo Default')
+                            ->required()
+                            ->options(array_combine(range(1, 31), range(1, 31)))
+                            ->default('25')
+                            ->helperText('Tanggal jatuh tempo default untuk tagihan bulanan (1-31). Jika tanggal tidak ada dalam bulan tertentu, akan menggunakan tanggal terakhir bulan tersebut.')
+                            ->searchable(),
+                    ])
+                    ->collapsible(),
+
+                Forms\Components\Section::make('Footer Invoice')
+                    ->description('Pesan yang ditampilkan di bagian bawah invoice')
+                    ->schema([
+                        Forms\Components\Textarea::make('invoice_footer')
+                            ->label('Pesan Footer')
+                            ->rows(2)
+                            ->placeholder('Terima kasih atas kepercayaan Anda...')
+                            ->helperText('Pesan ucapan terima kasih atau informasi tambahan'),
+                    ])
+                    ->collapsible(),
             ])
             ->statePath('data');
     }
 
     public function save(): void
     {
-        $data = $this->form->getState();
+        try {
+            $data = $this->form->getState();
 
-        foreach ($data as $key => $value) {
-            Setting::set($key, $value);
+            foreach ($data as $key => $value) {
+                Setting::set($key, $value);
+            }
+
+            Notification::make()
+                ->success()
+                ->title('Pengaturan Berhasil Disimpan')
+                ->body('Semua pengaturan invoice telah diperbarui.')
+                ->send();
+
+        } catch (Halt $exception) {
+            return;
         }
+    }
 
-        Notification::make()
-            ->title('Pengaturan invoice berhasil disimpan')
-            ->success()
-            ->send();
+    protected function getFormActions(): array
+    {
+        return [
+            Forms\Components\Actions\Action::make('save')
+                ->label('Simpan Pengaturan')
+                ->submit('save')
+                ->color('primary'),
+        ];
     }
 }

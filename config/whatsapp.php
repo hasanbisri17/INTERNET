@@ -3,16 +3,16 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Fonnte WhatsApp Gateway Configuration
+    | WAHA WhatsApp Gateway Configuration
     |--------------------------------------------------------------------------
     |
-    | Here you can configure your Fonnte WhatsApp Gateway settings.
+    | Here you can configure your WAHA WhatsApp Gateway settings.
     |
     */
 
-    'api_token' => env('FONNTE_API_TOKEN', ''),
+    'api_token' => env('WAHA_API_TOKEN', ''),
     
-    'api_url' => env('FONNTE_API_URL', 'https://api.fonnte.com'),
+    'api_url' => env('WAHA_API_URL', 'https://waha-pj8tw4c4otz1.wax.biz.id'),
 
     'message_templates' => [
         'billing' => [

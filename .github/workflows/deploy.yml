@@ -1,0 +1,45 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: ${{ secrets.VPS_PORT || 22 }}
+        script: |
+          # Navigate to application directory
+          cd /home/${{ secrets.VPS_USERNAME }}/internet-management-system
+          
+          # Pull latest changes
+          git pull origin main
+          
+          # Backup database before deployment
+          docker exec internet_db_prod mysqldump -u internet_user -p${{ secrets.DB_PASSWORD }} internet_db > backup_$(date +%Y%m%d_%H%M%S).sql
+          
+          # Rebuild and restart application
+          docker-compose -f docker-compose.vps.yml up -d --build
+          
+          # Wait for application to start
+          sleep 30
+          
+          # Run migrations if needed
+          docker exec internet_app_prod php artisan migrate --force
+          
+          # Clear cache
+          docker exec internet_app_prod php artisan optimize:clear
+          
+          # Check application health
+          curl -f http://localhost/ || exit 1
+          
+          echo "Deployment completed successfully!"

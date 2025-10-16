@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkActionGroup;
@@ -35,6 +36,8 @@ class WhatsAppResource extends Resource
     protected static ?string $navigationGroup = 'WhatsApp';
 
     protected static ?int $navigationSort = 1;
+    
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function form(Form $form): Form
     {
@@ -86,9 +89,59 @@ class WhatsAppResource extends Resource
                 TextColumn::make('message')
                     ->label('Pesan')
                     ->html()
-                    ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
-                        nl2br(e($state))
-                    ))
+                    ->formatStateUsing(function ($state, WhatsAppMessage $record): HtmlString {
+                        $html = '';
+                        
+                        // Show media preview if exists
+                        if ($record->media_path && $record->media_type === 'image') {
+                            // Handle path - remove 'storage/' prefix if exists, then add it back
+                            $cleanPath = str_replace('storage/', '', $record->media_path);
+                            $imageUrl = asset('storage/' . $cleanPath);
+                            
+                            // Check if file exists
+                            $fullPath = public_path('storage/' . $cleanPath);
+                            if (file_exists($fullPath)) {
+                                $html .= '<div class="mb-2">';
+                                $html .= '<a href="' . $imageUrl . '" target="_blank">';
+                                $html .= '<img src="' . $imageUrl . '" class="w-20 h-20 object-cover rounded border border-gray-200 hover:border-gray-400 transition" alt="Preview" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'80\'%3E%3Crect fill=\'%23f3f4f6\' width=\'80\' height=\'80\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%239ca3af\' font-size=\'12\'%3EError%3C/text%3E%3C/svg%3E\'" />';
+                                $html .= '</a>';
+                                $html .= '</div>';
+                            } else {
+                                $html .= '<div class="mb-2 text-xs text-red-600">';
+                                $html .= '📷 <span class="italic">Gambar tidak ditemukan</span>';
+                                $html .= '</div>';
+                            }
+                        } elseif ($record->media_path && $record->media_type === 'document') {
+                            // Handle path - remove 'storage/' prefix if exists, then add it back
+                            $cleanPath = str_replace('storage/', '', $record->media_path);
+                            $documentUrl = asset('storage/' . $cleanPath);
+                            $filename = basename($record->media_path);
+                            
+                            // Check if file exists
+                            $fullPath = public_path('storage/' . $cleanPath);
+                            if (file_exists($fullPath)) {
+                                $html .= '<div class="mb-2">';
+                                $html .= '<a href="' . $documentUrl . '" target="_blank" class="flex items-center space-x-2 text-xs text-blue-600 hover:text-blue-800 hover:underline">';
+                                $html .= '<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">';
+                                $html .= '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>';
+                                $html .= '</svg>';
+                                $html .= '<span class="font-medium">📄 ' . $filename . '</span>';
+                                $html .= '</a>';
+                                $html .= '</div>';
+                            } else {
+                                $html .= '<div class="mb-2 text-xs text-red-600">';
+                                $html .= '📄 <span class="italic">Dokumen tidak ditemukan: ' . htmlspecialchars($filename) . '</span>';
+                                $html .= '</div>';
+                            }
+                        }
+                        
+                        // Add message text (handle null/empty state)
+                        if (!empty($state)) {
+                            $html .= nl2br(e($state));
+                        }
+                        
+                        return new HtmlString($html);
+                    })
                     ->limit(50)
                     ->searchable(),
                 TextColumn::make('status')
@@ -147,7 +200,7 @@ class WhatsAppResource extends Resource
                             
                             $record->update([
                                 'status' => $result['success'] ? 'sent' : 'failed',
-                                'response' => $result,
+                                'response' => json_encode($result),
                                 'sent_at' => now(),
                             ]);
 

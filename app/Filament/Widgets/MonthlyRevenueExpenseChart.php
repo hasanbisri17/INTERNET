@@ -8,6 +8,15 @@ use Filament\Widgets\ChartWidget;
 class MonthlyRevenueExpenseChart extends ChartWidget
 {
     protected static ?string $heading = 'Pendapatan vs Pengeluaran (12 Bulan)';
+    
+    protected static bool $shouldRegisterNavigation = false;
+
+    public function getHeading(): ?string
+    {
+        // Cek apakah ada custom heading yang disimpan dalam cache
+        $customHeading = cache()->get('analytics_widget_custom_heading_' . static::class);
+        return $customHeading ?: static::$heading;
+    }
 
     protected function getData(): array
     {

@@ -1,0 +1,326 @@
+{
+  "name": "Laravel Dunning - Mikrotik Auto Suspend",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dunning-action",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Dunning Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "3fee2757-bba7-4387-bfe1-b324a4571f01"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.body.test_mode }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Check: Is Test Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Test mode response\nreturn {\n  json: {\n    status: 'success',\n    message: 'Test webhook received successfully',\n    test_mode: true,\n    customer: $input.item.json.body.customer_name,\n    phone: $input.item.json.body.customer_phone,\n    invoice: $input.item.json.body.invoice_number,\n    days_overdue: Math.floor($input.item.json.body.days_overdue),\n    received_at: new Date().toISOString(),\n    note: 'No action taken - test mode active'\n  }\n};"
+      },
+      "name": "Test Mode Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        680,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "name": "Return Test Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.body.action }}",
+                    "value2": "suspend"
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.body.action }}",
+                    "value2": "unsuspend"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "name": "Route: Suspend or Unsuspend?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        680,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "credentials",
+        "host": "192.168.1.1",
+        "port": 8728,
+        "resource": "pppSecret",
+        "operation": "disable",
+        "name": "={{ $json.body.customer_phone }}"
+      },
+      "name": "Mikrotik: Disable PPPoE",
+      "type": "@digital-boss/n8n-nodes-mikrotik.mikrotik",
+      "typeVersion": 1,
+      "position": [
+        900,
+        320
+      ],
+      "credentials": {
+        "mikrotikApi": {
+          "id": "1",
+          "name": "Mikrotik API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "credentials",
+        "host": "192.168.1.1",
+        "port": 8728,
+        "resource": "pppSecret",
+        "operation": "enable",
+        "name": "={{ $json.body.customer_phone }}"
+      },
+      "name": "Mikrotik: Enable PPPoE",
+      "type": "@digital-boss/n8n-nodes-mikrotik.mikrotik",
+      "typeVersion": 1,
+      "position": [
+        900,
+        520
+      ],
+      "credentials": {
+        "mikrotikApi": {
+          "id": "1",
+          "name": "Mikrotik API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Build success response for suspend\nconst customer = $input.item.json.body;\n\nreturn {\n  json: {\n    status: 'success',\n    action: 'suspended',\n    customer_name: customer.customer_name,\n    customer_phone: customer.customer_phone,\n    invoice_number: customer.invoice_number,\n    days_overdue: Math.floor(customer.days_overdue),\n    suspended_at: new Date().toISOString(),\n    mikrotik_response: $input.item.json\n  }\n};"
+      },
+      "name": "Format Suspend Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Build success response for unsuspend\nconst customer = $input.item.json.body;\n\nreturn {\n  json: {\n    status: 'success',\n    action: 'unsuspended',\n    customer_name: customer.customer_name,\n    customer_phone: customer.customer_phone,\n    invoice_number: customer.invoice_number,\n    unsuspended_at: new Date().toISOString(),\n    mikrotik_response: $input.item.json\n  }\n};"
+      },
+      "name": "Format Unsuspend Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "name": "Return Suspend Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "name": "Return Unsuspend Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log all webhook data for debugging\nconst body = $input.item.json.body;\n\nconsole.log('=== Dunning Webhook Received ===');\nconsole.log('Action:', body.action);\nconsole.log('Test Mode:', body.test_mode);\nconsole.log('Customer:', body.customer_name);\nconsole.log('Phone:', body.customer_phone);\nconsole.log('Invoice:', body.invoice_number);\nconsole.log('Days Overdue:', Math.floor(body.days_overdue));\nconsole.log('Amount:', body.invoice_amount);\nconsole.log('================================');\n\nreturn $input.all();"
+      },
+      "name": "Log Webhook Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        460,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Dunning Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check: Is Test Mode?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Webhook Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Is Test Mode?": {
+      "main": [
+        [
+          {
+            "node": "Test Mode Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route: Suspend or Unsuspend?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Mode Response": {
+      "main": [
+        [
+          {
+            "node": "Return Test Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route: Suspend or Unsuspend?": {
+      "main": [
+        [
+          {
+            "node": "Mikrotik: Disable PPPoE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mikrotik: Enable PPPoE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mikrotik: Disable PPPoE": {
+      "main": [
+        [
+          {
+            "node": "Format Suspend Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mikrotik: Enable PPPoE": {
+      "main": [
+        [
+          {
+            "node": "Format Unsuspend Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Suspend Response": {
+      "main": [
+        [
+          {
+            "node": "Return Suspend Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Unsuspend Response": {
+      "main": [
+        [
+          {
+            "node": "Return Unsuspend Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-10-14T01:37:46.000Z",
+  "versionId": "1"
+}
+
