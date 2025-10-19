@@ -134,49 +134,108 @@ LOG_LEVEL=info
 3. Select **"Docker"**
 4. Name: `internet-management`
 
-### Step 2: Configure Image
-1. **Image Source**: Docker Hub
-2. **Image Name**: `habis12/internet-management:latest`
-3. **Tag**: `latest`
+### Step 2: Configure Docker Compose
+1. **Select "Docker Compose"** instead of single image
+2. **Copy the configuration below**:
+
+```yaml
+services:
+  app:
+    image: habis12/internet-management:latest
+    restart: unless-stopped
+    ports:
+      - "1217:1217"
+    environment:
+      - APP_NAME=Internet Management
+      - APP_ENV=production
+      - APP_KEY=base64:${APP_KEY}
+      - APP_DEBUG=false
+      - APP_URL=${APP_URL}
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=internet_management
+      - DB_USERNAME=root
+      - DB_PASSWORD=${DB_PASSWORD}
+      - CACHE_DRIVER=file
+      - SESSION_DRIVER=file
+      - QUEUE_CONNECTION=sync
+      - MAIL_MAILER=log
+      - LOG_CHANNEL=stack
+    volumes:
+      - storage:/var/www/html/storage
+      - public:/var/www/html/public
+    networks:
+      - internet-network
+    depends_on:
+      - mysql
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1217/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=internet_management
+      - MYSQL_USER=internet_user
+      - MYSQL_PASSWORD=internet_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - internet-network
+    ports:
+      - "3306:3306"
+
+networks:
+  internet-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  storage:
+  public:
+```
 
 ### Step 3: Set Environment Variables
 1. Go to **"Environment"** tab
-2. Add all required environment variables
+2. Add these environment variables:
+   ```env
+   APP_KEY=base64:your-32-character-key-here
+   APP_URL=https://your-domain.com
+   DB_PASSWORD=your-secure-password
+   ```
 3. Generate secure `APP_KEY`:
    ```bash
    openssl rand -base64 32
    ```
 
-### Step 4: Configure Database
-1. **Option A**: Create MySQL service in EasyPanel
-2. **Option B**: Use external MySQL database
-3. Update database environment variables
-
-### Step 5: Deploy
+### Step 4: Deploy
 1. Click **"Deploy"**
 2. Wait for deployment to complete
 3. Check logs for any errors
 
-### Step 6: Setup Application
+### Step 5: Setup Application
 1. **Access container**:
    ```bash
    # Via EasyPanel terminal or SSH
-   docker exec -it internet-management-container bash
+   docker exec -it internet-management-app-1 bash
    ```
 
 2. **Run setup commands**:
    ```bash
-   # Install dependencies
-   composer install --no-dev --optimize-autoloader
-   
-   # Generate app key
-   php artisan key:generate --force
-   
    # Run migrations
    php artisan migrate --force
    
    # Seed database
    php artisan db:seed --force
+   
+   # Generate app key
+   php artisan key:generate --force
    
    # Setup storage
    php artisan storage:link

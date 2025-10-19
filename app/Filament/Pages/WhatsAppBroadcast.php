@@ -466,5 +466,6 @@ class WhatsAppBroadcast extends Page implements HasForms
             Log::error("Failed to send broadcast failure notification: {$e->getMessage()}");
         }
     }
+
 }
 
