@@ -14,10 +14,17 @@ Route::get('/health', function () {
     return response()->json([
         'status' => 'ok',
         'timestamp' => now(),
-        'version' => '1.0.0',
+        'version' => config('app.version', '1.0.0'),
         'database' => DB::connection()->getPdo() ? 'connected' : 'disconnected'
     ]);
 })->name('health');
+
+// Update routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/api/update/check', [App\Http\Controllers\UpdateController::class, 'checkUpdate'])->name('update.check');
+    Route::post('/api/update/perform', [App\Http\Controllers\UpdateController::class, 'performUpdate'])->name('update.perform');
+    Route::get('/api/update/status', [App\Http\Controllers\UpdateController::class, 'getUpdateStatus'])->name('update.status');
+});
 
 // GitHub Webhook route
 Route::match(['get', 'post'], '/webhook', [WebhookController::class, 'handle'])->name('webhook');

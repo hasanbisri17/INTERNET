@@ -16,6 +16,7 @@ return [
             explode(',', env('APP_PREVIOUS_KEYS', ''))
         ),
     ],
+    'version' => env('APP_VERSION', '1.0.0'),
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),

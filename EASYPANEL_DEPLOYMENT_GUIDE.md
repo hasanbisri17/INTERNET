@@ -1,199 +1,297 @@
-# 🚀 EasyPanel VPS Deployment Guide
-# Internet Management System
+# EasyPanel Deployment Guide
 
-## 📋 Prerequisites
+Panduan lengkap untuk deploy aplikasi Internet Management di EasyPanel menggunakan Docker image yang sudah di-push ke Docker Hub.
 
-- VPS dengan EasyPanel terinstall
-- Domain yang sudah di-point ke VPS (opsional)
-- Repository GitHub (tidak harus public)
+## 🚀 Quick Start
 
-## 🔧 Step-by-Step Deployment
+### 1. Login ke EasyPanel
+- Buka EasyPanel dashboard
+- Login dengan akun Anda
 
-### 1. Persiapan Repository
+### 2. Create New Project
+- Klik **"New Project"** atau **"Create Project"**
+- Pilih **"Docker"** sebagai project type
+- Beri nama project: `internet-management`
 
-#### Option A: Repository Public (Recommended)
-```bash
-# Repository sudah public, langsung bisa digunakan
-Repository URL: https://github.com/hasanbisri17/INTERNET.git
-```
+### 3. Deploy dari Docker Hub
+- Pilih **"Deploy from Docker Hub"**
+- Masukkan image name: `habis12/internet-management:latest`
+- Klik **"Deploy"**
 
-#### Option B: Repository Private
-```bash
-# Jika repository private, gunakan Personal Access Token
-# 1. Buat Personal Access Token di GitHub
-# 2. Gunakan format: https://username:token@github.com/hasanbisri17/INTERNET.git
-```
+## ⚙️ Konfigurasi Environment Variables
 
-### 2. Konfigurasi di EasyPanel
-
-#### A. Buat New Project
-1. Login ke EasyPanel
-2. Klik "New Project"
-3. Pilih "Git Repository"
-4. Masukkan repository URL:
-   ```
-   https://github.com/hasanbisri17/INTERNET.git
-   ```
-
-#### B. Konfigurasi Build
-1. **Dockerfile Path**: `Dockerfile.easypanel`
-2. **Build Context**: `.` (root directory)
-3. **Branch**: `main`
-
-#### C. Environment Variables
-Copy dari `env.easypanel` dan sesuaikan:
+Setelah project dibuat, konfigurasi environment variables:
 
 ```env
-APP_NAME="Internet Management System"
+APP_NAME=Internet Management
 APP_ENV=production
-APP_KEY=base64:YOUR_APP_KEY_HERE
+APP_KEY=base64:your-app-key-here
+APP_DEBUG=false
+APP_URL=https://your-domain.com
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=internet_management
+DB_USERNAME=root
+DB_PASSWORD=password
+CACHE_DRIVER=file
+SESSION_DRIVER=file
+QUEUE_CONNECTION=sync
+MAIL_MAILER=log
+LOG_CHANNEL=stack
+```
+
+## 🗄️ Database Setup
+
+### Option 1: EasyPanel MySQL Service
+1. **Create MySQL Service**:
+   - Service Type: `MySQL`
+   - Version: `8.0`
+   - Database Name: `internet_management`
+   - Username: `root`
+   - Password: `password`
+
+2. **Update Environment Variables**:
+   ```env
+   DB_HOST=mysql-service-name
+   DB_PORT=3306
+   DB_DATABASE=internet_management
+   DB_USERNAME=root
+   DB_PASSWORD=password
+   ```
+
+### Option 2: External MySQL
+- Gunakan MySQL dari provider lain (PlanetScale, Railway, dll)
+- Update environment variables sesuai dengan kredensial external
+
+## 🌐 Domain & SSL Setup
+
+1. **Add Domain**:
+   - Masuk ke project settings
+   - Klik **"Domains"**
+   - Add domain: `your-domain.com`
+
+2. **SSL Certificate**:
+   - EasyPanel akan otomatis generate SSL certificate
+   - Atau upload custom certificate jika ada
+
+## 📋 Port Configuration
+
+- **Application Port**: `1217` (internal)
+- **External Port**: EasyPanel akan handle port mapping
+- **Health Check**: `/health`
+
+## 🔧 Advanced Configuration
+
+### 1. Resource Limits
+```yaml
+CPU: 1 core
+Memory: 1GB
+Storage: 10GB
+```
+
+### 2. Auto Restart
+- Enable **"Auto Restart"** untuk restart otomatis jika crash
+- Enable **"Health Check"** dengan endpoint `/health`
+
+### 3. Environment Variables Template
+```env
+# Application
+APP_NAME=Internet Management
+APP_ENV=production
+APP_KEY=base64:your-32-character-key
 APP_DEBUG=false
 APP_URL=https://your-domain.com
 
-# Database (SQLite - tidak perlu konfigurasi tambahan)
-DB_CONNECTION=sqlite
-DB_DATABASE=/var/www/html/database/database.sqlite
+# Database
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=internet_management
+DB_USERNAME=root
+DB_PASSWORD=your-secure-password
 
-# Cache
+# Cache & Session
 CACHE_DRIVER=file
 SESSION_DRIVER=file
+QUEUE_CONNECTION=sync
 
-# Security
-SANCTUM_STATEFUL_DOMAINS=your-domain.com
-SESSION_DOMAIN=your-domain.com
-SESSION_SECURE_COOKIE=true
+# Mail
+MAIL_MAILER=log
+MAIL_FROM_ADDRESS=admin@your-domain.com
+MAIL_FROM_NAME=Internet Management
 
-# Timezone
-APP_TIMEZONE=Asia/Jakarta
-
-# WhatsApp (sesuaikan dengan konfigurasi Anda)
-WHATSAPP_API_URL=https://graph.facebook.com/v18.0
-WHATSAPP_ACCESS_TOKEN=your-whatsapp-token
-WHATSAPP_PHONE_NUMBER_ID=your-phone-number-id
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=your-webhook-token
-
-# Mikrotik (sesuaikan dengan konfigurasi Anda)
-MIKROTIK_API_URL=http://192.168.1.1
-MIKROTIK_USERNAME=admin
-MIKROTIK_PASSWORD=your-mikrotik-password
+# Logging
+LOG_CHANNEL=stack
+LOG_LEVEL=info
 ```
 
-#### D. Port Configuration
-- **Container Port**: `80`
-- **Public Port**: `8080` (atau port yang diinginkan)
+## 🚀 Deployment Steps
 
-### 3. Deploy Application
+### Step 1: Create Project
+1. Login ke EasyPanel
+2. Click **"New Project"**
+3. Select **"Docker"**
+4. Name: `internet-management`
 
-1. Klik "Deploy" di EasyPanel
-2. Tunggu proses build selesai (biasanya 5-10 menit)
-3. Monitor logs untuk memastikan tidak ada error
+### Step 2: Configure Image
+1. **Image Source**: Docker Hub
+2. **Image Name**: `habis12/internet-management:latest`
+3. **Tag**: `latest`
 
-### 4. Post-Deployment Setup
+### Step 3: Set Environment Variables
+1. Go to **"Environment"** tab
+2. Add all required environment variables
+3. Generate secure `APP_KEY`:
+   ```bash
+   openssl rand -base64 32
+   ```
 
-#### A. Generate APP_KEY
-Jika belum ada APP_KEY, jalankan:
+### Step 4: Configure Database
+1. **Option A**: Create MySQL service in EasyPanel
+2. **Option B**: Use external MySQL database
+3. Update database environment variables
+
+### Step 5: Deploy
+1. Click **"Deploy"**
+2. Wait for deployment to complete
+3. Check logs for any errors
+
+### Step 6: Setup Application
+1. **Access container**:
+   ```bash
+   # Via EasyPanel terminal or SSH
+   docker exec -it internet-management-container bash
+   ```
+
+2. **Run setup commands**:
+   ```bash
+   # Install dependencies
+   composer install --no-dev --optimize-autoloader
+   
+   # Generate app key
+   php artisan key:generate --force
+   
+   # Run migrations
+   php artisan migrate --force
+   
+   # Seed database
+   php artisan db:seed --force
+   
+   # Setup storage
+   php artisan storage:link
+   
+   # Set permissions
+   chown -R www-data:www-data /var/www/html/storage
+   chmod -R 755 /var/www/html/storage
+   ```
+
+## 🔍 Monitoring & Maintenance
+
+### 1. Health Check
+- **Endpoint**: `https://your-domain.com/health`
+- **Expected Response**: `{"status":"ok","timestamp":"...","version":"1.0.0","database":"connected"}`
+
+### 2. Logs
+- Access logs via EasyPanel dashboard
+- Check application logs: `/var/www/html/storage/logs/`
+- Check nginx logs: `/var/log/nginx/`
+
+### 3. Backup
+- **Database**: Export via EasyPanel MySQL service
+- **Files**: Backup storage volume
+- **Configuration**: Export environment variables
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+1. **Application not starting**:
+   - Check environment variables
+   - Verify database connection
+   - Check logs for errors
+
+2. **Database connection failed**:
+   - Verify database credentials
+   - Check if MySQL service is running
+   - Test connection from container
+
+3. **Permission issues**:
+   ```bash
+   chown -R www-data:www-data /var/www/html/storage
+   chmod -R 755 /var/www/html/storage
+   ```
+
+4. **SSL issues**:
+   - Check domain configuration
+   - Verify SSL certificate
+   - Check nginx configuration
+
+### Useful Commands
+
 ```bash
-# Di EasyPanel terminal atau SSH ke VPS
-docker exec -it your-container-name php artisan key:generate
+# Check container status
+docker ps
+
+# View logs
+docker logs internet-management-container
+
+# Access container
+docker exec -it internet-management-container bash
+
+# Check database connection
+php artisan migrate:status
+
+# Clear cache
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
 ```
-
-#### B. Run Migrations
-```bash
-docker exec -it your-container-name php artisan migrate --force
-```
-
-#### C. Seed Database
-```bash
-docker exec -it your-container-name php artisan db:seed --force
-```
-
-#### D. Create Storage Link
-```bash
-docker exec -it your-container-name php artisan storage:link
-```
-
-### 5. Akses Application
-
-#### Default Login Credentials:
-- **Email**: `admin@example.com`
-- **Password**: `password`
-
-⚠️ **PENTING**: Ganti password default setelah login pertama!
-
-## 🔧 Troubleshooting
-
-### Problem: Build Failed
-**Solution**:
-1. Pastikan menggunakan `Dockerfile.easypanel`
-2. Check logs untuk error spesifik
-3. Pastikan repository accessible
-
-### Problem: Application Not Starting
-**Solution**:
-1. Check environment variables
-2. Pastikan APP_KEY sudah di-generate
-3. Check logs: `docker logs your-container-name`
-
-### Problem: Database Error
-**Solution**:
-1. Pastikan SQLite database file ada
-2. Check permissions: `chmod 644 database/database.sqlite`
-3. Run migrations: `php artisan migrate --force`
-
-### Problem: Permission Denied
-**Solution**:
-```bash
-# Set proper permissions
-docker exec -it your-container-name chown -R www-data:www-data /var/www/html
-docker exec -it your-container-name chmod -R 755 /var/www/html/storage
-```
-
-### Problem: WhatsApp Not Working
-**Solution**:
-1. Pastikan webhook URL accessible dari internet
-2. Check WhatsApp credentials
-3. Verify webhook token
-
-## 📊 Monitoring
-
-### Health Check
-Application memiliki health check endpoint:
-```
-GET /health
-```
-
-### Logs
-```bash
-# View application logs
-docker logs your-container-name
-
-# View Laravel logs
-docker exec -it your-container-name tail -f storage/logs/laravel.log
-```
-
-## 🔄 Updates
-
-Untuk update application:
-1. Push changes ke GitHub
-2. Di EasyPanel, klik "Redeploy"
-3. Tunggu build selesai
 
 ## 📞 Support
 
 Jika mengalami masalah:
-1. Check logs terlebih dahulu
-2. Pastikan semua environment variables sudah benar
-3. Verify repository accessibility
-4. Check VPS resources (RAM, CPU, Disk)
 
-## 🎯 Best Practices
+1. **Check EasyPanel logs** untuk error messages
+2. **Verify environment variables** sudah benar
+3. **Test database connection** dari container
+4. **Check resource limits** (CPU/Memory)
+5. **Contact EasyPanel support** jika masalah persisten
 
-1. **Backup**: Regular backup database dan storage
-2. **Monitoring**: Setup monitoring untuk uptime
-3. **Security**: Update password default dan enable HTTPS
-4. **Performance**: Monitor resource usage
-5. **Updates**: Regular update dependencies
+## 🎯 Production Tips
 
----
+1. **Security**:
+   - Gunakan password database yang kuat
+   - Set `APP_DEBUG=false`
+   - Enable SSL/HTTPS
 
-**Note**: Repository tidak harus public untuk digunakan di EasyPanel. Anda bisa menggunakan Personal Access Token untuk repository private.
+2. **Performance**:
+   - Set resource limits yang sesuai
+   - Enable OPcache (sudah included)
+   - Monitor memory usage
+
+3. **Monitoring**:
+   - Setup health check monitoring
+   - Monitor logs regularly
+   - Setup backup schedule
+
+4. **Updates**:
+   - Update image secara berkala
+   - Test di staging environment dulu
+   - Backup sebelum update
+
+## ✅ Checklist Deployment
+
+- [ ] Project created in EasyPanel
+- [ ] Docker image pulled from Docker Hub
+- [ ] Environment variables configured
+- [ ] Database service created/configured
+- [ ] Domain added and SSL enabled
+- [ ] Application deployed successfully
+- [ ] Health check passing
+- [ ] Database migrations run
+- [ ] Application accessible via domain
+- [ ] Backup strategy implemented
+
+**🎉 Selamat! Aplikasi Internet Management sudah siap digunakan di EasyPanel!**

@@ -1,32 +1,34 @@
-# Docker ignore file untuk optimasi build
-# Mengurangi ukuran build dan mempercepat proses
-
 # Git
 .git
 .gitignore
 .gitattributes
 
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
 # Documentation
-README.md
-README_PLUG_PLAY.md
-DOCKER_HUB_GUIDE.md
-DOCKER_HUB_README.md
-DOCKER_SETUP.md
-VPS_DEPLOYMENT_GUIDE.md
-VPS_DEPLOYMENT_STANDALONE.md
-ZIP_DEPLOYMENT_GUIDE.md
+README*.md
 docs/
 *.md
 
-# Docker files
-Dockerfile*
-docker-compose*.yml
-docker/
-.dockerignore
+# Development files
+.env.example
+.env.local
+.env.testing
+.env.development
 
-# Environment files
-.env*
-env.*
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Node modules
 node_modules/
@@ -35,75 +37,35 @@ yarn-debug.log*
 yarn-error.log*
 
 # Build artifacts
-public/build/
-public/hot
-public/storage
-public/vendor/
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
 
-# Storage
-storage/app/public/
-storage/framework/cache/
-storage/framework/sessions/
-storage/framework/views/
-storage/logs/
+# Logs
+/storage/logs/*
+!/storage/logs/.gitkeep
 
 # Cache
-bootstrap/cache/
+/bootstrap/cache/*
+!/bootstrap/cache/.gitkeep
 
-# Database
-database/database.sqlite
-*.sql
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Test files
-tests/
+# Testing
+/tests/
 phpunit.xml
 .phpunit.result.cache
 
-# Deployment scripts
-deploy.sh
-docker-upload.sh
-vps-deploy*.sh
-zip-deploy.sh
-test-plug-play.sh
+# Temporary files
+temp-upload/
+*.tmp
+*.temp
 
 # Backup files
-*.backup
 *.bak
+*.backup
 
-# Log files
-*.log
-
-# Temporary files
-tmp/
-temp/
-
-# Vendor (akan diinstall ulang)
-vendor/
-
-# Composer
-composer.phar
-
-# Package files
-package-lock.json
-yarn.lock
-
-# Build tools
-webpack.mix.js
-vite.config.js
-tailwind.config.js
-postcss.config.js
-
-# Status files
-status
-bash.exe.stackdump
+# Deployment scripts
+deploy.sh
+vps-deploy*.sh
+zip-deploy.sh
+prepare-upload.sh

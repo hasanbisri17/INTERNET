@@ -1,0 +1,84 @@
+/* Logo Drag and Drop Component Styles */
+.logo-drag-drop {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.logo-drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.logo-drop-area.dragging {
+    border-color: #4f46e5;
+    background-color: rgba(79, 70, 229, 0.05);
+}
+
+.logo-placeholder {
+    color: #666;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.logo-preview {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.logo-preview img {
+    max-height: 100px;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.upload-button, .change-button {
+    display: inline-block;
+    background-color: #4f46e5;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.upload-button:hover, .change-button:hover {
+    background-color: #3c3799;
+}
+
+.logo-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    gap: 10px;
+}
+
+.remove-button {
+    display: inline-block;
+    background-color: #ef4444;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.remove-button:hover {
+    background-color: #b91c1c;
+}
