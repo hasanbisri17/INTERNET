@@ -4,7 +4,8 @@ namespace App\Filament\Resources\PaymentResource\Pages;
 
 use App\Filament\Resources\PaymentResource;
 use Filament\Actions;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Notifications\Notification;
 
@@ -20,17 +21,40 @@ class ListPayments extends ListRecords
             Actions\Action::make('generateMonthlyBills')
                 ->label('Generate Tagihan Bulanan')
                 ->form([
-                    DatePicker::make('month')
-                        ->label('Pilih Bulan')
-                        ->format('Y-m')
-                        ->displayFormat('F Y')
-                        ->required(),
+                    Select::make('month')
+                        ->label('Bulan Tagihan')
+                        ->options([
+                            1 => 'Januari',
+                            2 => 'Februari',
+                            3 => 'Maret',
+                            4 => 'April',
+                            5 => 'Mei',
+                            6 => 'Juni',
+                            7 => 'Juli',
+                            8 => 'Agustus',
+                            9 => 'September',
+                            10 => 'Oktober',
+                            11 => 'November',
+                            12 => 'Desember',
+                        ])
+                        ->default(fn () => now()->month)
+                        ->required()
+                        ->native(false)
+                        ->columnSpan(1),
+                    TextInput::make('year')
+                        ->label('Tahun Tagihan')
+                        ->numeric()
+                        ->default(fn () => now()->year)
+                        ->required()
+                        ->minValue(2020)
+                        ->maxValue(2100)
+                        ->columnSpan(1),
                 ])
                 ->action(function (array $data): void {
                     try {
-                        // Convert the date to string format Y-m
-                        $month = date('Y-m', strtotime($data['month']));
-                        PaymentResource::generateMonthlyBills($month);
+                        // Construct month format Y-m from month and year
+                        $month = sprintf('%04d-%02d', $data['year'], $data['month']);
+                        PaymentResource::generateMonthlyBills($month, $data['month'], $data['year']);
                         
                         Notification::make()
                             ->title('Tagihan bulanan berhasil dibuat')
@@ -45,7 +69,7 @@ class ListPayments extends ListRecords
                     }
                 })
                 ->modalHeading('Generate Tagihan Bulanan')
-                ->modalDescription('Pilih bulan untuk membuat tagihan baru. Sistem akan melewati pelanggan yang sudah memiliki tagihan di bulan yang dipilih.'),
+                ->modalDescription('Pilih bulan dan tahun untuk membuat tagihan baru. Sistem akan melewati pelanggan yang sudah memiliki tagihan di bulan yang dipilih.'),
         ];
     }
 }

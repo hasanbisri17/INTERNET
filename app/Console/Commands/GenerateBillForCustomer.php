@@ -58,10 +58,10 @@ class GenerateBillForCustomer extends Command
             
             $this->info("Using due date: {$dueDate->format('Y-m-d')} (day {$dueDateDay} of month)");
             
-            // Check if customer already has a bill for this month
+            // Check if customer already has a bill for this month and year
             $existingBill = Payment::where('customer_id', $customer->id)
-                ->whereYear('due_date', $selectedDate->year)
-                ->whereMonth('due_date', $selectedDate->month)
+                ->where('billing_month', $selectedDate->month)
+                ->where('billing_year', $selectedDate->year)
                 ->exists();
             
             if (!$existingBill) {
@@ -69,6 +69,8 @@ class GenerateBillForCustomer extends Command
                     'customer_id' => $customer->id,
                     'internet_package_id' => $customer->internet_package_id,
                     'invoice_number' => Payment::generateInvoiceNumber(),
+                    'billing_month' => $selectedDate->month,
+                    'billing_year' => $selectedDate->year,
                     'amount' => $customer->internetPackage->price,
                     'due_date' => $dueDate,
                     'status' => 'pending',

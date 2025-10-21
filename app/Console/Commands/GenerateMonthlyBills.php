@@ -64,10 +64,10 @@ class GenerateMonthlyBills extends Command
             $billsSkipped = 0;
             
             foreach ($customers as $customer) {
-                // Check if customer already has a bill for this month
+                // Check if customer already has a bill for this month and year
                 $existingBill = Payment::where('customer_id', $customer->id)
-                    ->whereYear('due_date', $selectedDate->year)
-                    ->whereMonth('due_date', $selectedDate->month)
+                    ->where('billing_month', $selectedDate->month)
+                    ->where('billing_year', $selectedDate->year)
                     ->exists();
                 
                 if (!$existingBill) {
@@ -75,6 +75,8 @@ class GenerateMonthlyBills extends Command
                         'customer_id' => $customer->id,
                         'internet_package_id' => $customer->internet_package_id,
                         'invoice_number' => Payment::generateInvoiceNumber(),
+                        'billing_month' => $selectedDate->month,
+                        'billing_year' => $selectedDate->year,
                         'amount' => $customer->internetPackage->price,
                         'due_date' => $dueDate,
                         'status' => 'pending',

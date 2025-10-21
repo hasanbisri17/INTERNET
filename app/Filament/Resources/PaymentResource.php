@@ -487,7 +487,7 @@ class PaymentResource extends Resource
         ];
     }
 
-    public static function generateMonthlyBills(string $month): void
+    public static function generateMonthlyBills(string $month, int $billingMonth, int $billingYear): void
     {
         $whatsapp = new WhatsAppService();
         try {
@@ -500,10 +500,10 @@ class PaymentResource extends Resource
             $dueDate = $selectedDate->copy()->addDays(24); // Due date is 25th of the month
 
             foreach ($customers as $customer) {
-                // Check if customer already has a bill for this month
+                // Check if customer already has a bill for this month and year
                 $existingBill = Payment::where('customer_id', $customer->id)
-                    ->whereYear('due_date', $selectedDate->year)
-                    ->whereMonth('due_date', $selectedDate->month)
+                    ->where('billing_month', $billingMonth)
+                    ->where('billing_year', $billingYear)
                     ->exists();
 
                 if (!$existingBill) {
@@ -511,6 +511,8 @@ class PaymentResource extends Resource
                         'customer_id' => $customer->id,
                         'internet_package_id' => $customer->internet_package_id,
                         'invoice_number' => Payment::generateInvoiceNumber(),
+                        'billing_month' => $billingMonth,
+                        'billing_year' => $billingYear,
                         'amount' => $customer->internetPackage->price,
                         'due_date' => $dueDate,
                         'status' => 'pending',
