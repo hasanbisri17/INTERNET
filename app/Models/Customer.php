@@ -18,6 +18,10 @@ class Customer extends Model
         'phone',
         'address',
         'internet_package_id',
+        'connection_type',
+        'pppoe_username',
+        'pppoe_password',
+        'customer_id',
     ];
 
     public function internetPackage(): BelongsTo
