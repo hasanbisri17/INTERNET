@@ -291,17 +291,8 @@ class PaymentResource extends Resource
                             'payment_id' => $record->id,
                         ]);
 
-                        // Send WhatsApp notification for successful payment WITH PAID INVOICE PDF
-                        try {
-                            $whatsapp = new WhatsAppService();
-                            $whatsapp->sendBillingNotification($record, 'paid', true); // true = send PDF invoice lunas
-                        } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
-                                ->warning()
-                                ->title('WhatsApp Notification Failed')
-                                ->body('Payment recorded successfully, but failed to send WhatsApp notification.')
-                                ->send();
-                        }
+                        // WhatsApp notification akan dikirim otomatis oleh PaymentObserver
+                        // saat status berubah menjadi 'paid'
                     })
                     ->visible(fn (?Payment $record): bool => $record && $record->status !== 'paid')
                     ->successNotificationTitle('Pembayaran berhasil dicatat')
