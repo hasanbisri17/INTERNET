@@ -6,30 +6,33 @@ Setelah generate tagihan atau tambah tagihan baru, pesan WhatsApp **TIDAK terkir
 
 - Status pesan: `failed`
 - Error message: `401 Unauthorized - {"message":"Unauthorized","statusCode":401}`
-- Response: `"All sending methods failed. Check WAHA API configuration."`
+- Response: `"All sending methods failed. Check GOWA API configuration."`
 
 ## 🎯 Penyebab Masalah
 
-**WAHA API memerlukan API Token untuk autentikasi**, tapi API Token di pengaturan WhatsApp **kosong** atau **tidak valid**.
+**GOWA API memerlukan API Token untuk autentikasi**, tapi API Token di pengaturan WhatsApp **kosong** atau **tidak valid**.
 
-Tanpa API Token yang valid, setiap request ke WAHA API akan ditolak dengan error `401 Unauthorized`.
+Tanpa API Token yang valid, setiap request ke GOWA API akan ditolak dengan error `401 Unauthorized`.
 
 ## ✅ Solusi
 
-### Langkah 1: Dapatkan API Token dari WAHA
+### Langkah 1: Setup dan Dapatkan API Token dari GOWA
 
-1. **Buka Dashboard WAHA** 
-   - Akses URL WAHA Anda (contoh: `https://waha-pj8tw4c4otz1.wax.biz.id`)
+1. **Install dan Jalankan GOWA** 
+   - Install GOWA dari: https://github.com/aldinokemal/go-whatsapp-web-multidevice
+   - Jalankan server GOWA (biasanya di port 3000)
+   - Akses dashboard di `http://localhost:3000`
    
-2. **Login ke Dashboard WAHA**
+2. **Login dengan QR Code**
+   - Scan QR Code dengan WhatsApp Anda
+   - Tunggu hingga status "Connected"
 
-3. **Masuk ke Menu Security/Settings**
-   - Cari menu **Settings** → **Security**
-   - Atau langsung ke **API Configuration**
+3. **Set API Key**
+   - Set environment variable `WHATSAPP_API_KEY` saat menjalankan GOWA
+   - Atau gunakan API Key yang sudah di-set di GOWA
 
 4. **Copy API Token**
-   - Akan ada field yang menampilkan **API Token** atau **API Key**
-   - Copy token tersebut
+   - Gunakan API Key yang sama dengan yang di-set di GOWA
 
 ### Langkah 2: Masukkan API Token ke Aplikasi
 
@@ -86,12 +89,12 @@ public function __construct(?WhatsAppSetting $settings = null)
         throw new \Exception('WhatsApp settings not configured. Please configure WhatsApp settings first in WhatsApp → Pengaturan WhatsApp menu.');
     }
 
-    // Validate API token is not empty (WAHA API requires authentication)
+    // Validate API token is not empty (GOWA API requires authentication)
     if (empty($this->settings->api_token)) {
-        throw new \Exception('WhatsApp API Token is required. Please set your WAHA API token in WhatsApp → Pengaturan WhatsApp menu. Error: API Token tidak boleh kosong.');
+        throw new \Exception('WhatsApp API Token is required. Please set your GOWA API token in WhatsApp → Pengaturan WhatsApp menu. Error: API Token tidak boleh kosong.');
     }
 
-    // Add API token to headers (required for WAHA API)
+    // Add API token to headers (required for GOWA API)
     $headers['X-API-Key'] = $this->settings->api_token;
     
     // ... rest of code
@@ -109,21 +112,21 @@ File: `app/Filament/Resources/WhatsAppSettingResource.php`
 
 ```php
 Forms\Components\Section::make('⚠️ Penting: API Token Wajib Diisi')
-    ->description('WAHA API memerlukan API Token untuk autentikasi. Tanpa API Token, pengiriman WhatsApp akan gagal dengan error 401 Unauthorized.')
+    ->description('GOWA API memerlukan API Token untuk autentikasi. Tanpa API Token, pengiriman WhatsApp akan gagal dengan error 401 Unauthorized.')
     ->schema([
         Forms\Components\Placeholder::make('token_info')
             ->content(/* Informasi cara mendapatkan API Token */),
         Forms\Components\TextInput::make('api_token')
             ->label('API Token (X-API-Key)')
             ->required()
-            ->placeholder('Masukkan API Token dari WAHA')
-            ->helperText('Token autentikasi untuk WAHA API. Field ini WAJIB diisi!'),
+            ->placeholder('Masukkan API Token dari GOWA')
+            ->helperText('Token autentikasi untuk GOWA API. Field ini WAJIB diisi!'),
     ])
 ```
 
 **Perubahan:**
 - ✅ Menambahkan section dengan peringatan tentang pentingnya API Token
-- ✅ Menambahkan instruksi cara mendapatkan API Token dari WAHA
+- ✅ Menambahkan instruksi cara mendapatkan API Token dari GOWA
 - ✅ Menambahkan helper text yang jelas
 - ✅ Menambahkan placeholder yang informatif
 
@@ -133,8 +136,8 @@ Setelah melakukan perbaikan, pastikan:
 
 - [ ] API Token sudah diisi di Pengaturan WhatsApp
 - [ ] API Token tidak kosong dan valid
-- [ ] API URL benar (contoh: `https://waha-pj8tw4c4otz1.wax.biz.id`)
-- [ ] Session name benar (biasanya `default`)
+- [ ] API URL benar (contoh: `http://localhost:3000` atau `https://wa.domain.com`)
+- [ ] GOWA server sudah running dan connected
 - [ ] Test koneksi berhasil
 - [ ] Generate tagihan berhasil mengirim WhatsApp
 - [ ] Status pesan di Riwayat Pesan adalah `sent`, bukan `failed`
@@ -144,13 +147,13 @@ Setelah melakukan perbaikan, pastikan:
 ### 1. Cek Log Laravel
 
 ```bash
-tail -f storage/logs/laravel.log | grep -i "whatsapp\|waha"
+tail -f storage/logs/laravel.log | grep -i "whatsapp\|gowa"
 ```
 
 Cari error seperti:
 - `401 Unauthorized` - API Token salah atau kosong
 - `404 Not Found` - API URL salah
-- `Connection refused` - WAHA server tidak bisa diakses
+- `Connection refused` - GOWA server tidak bisa diakses atau tidak running
 - `SSL verification failed` - Masalah SSL (sudah di-handle dengan `verify: false`)
 
 ### 2. Cek Database
@@ -195,28 +198,29 @@ dd($result);
 1. **Jangan hapus atau kosongkan API Token** setelah diisi dengan benar
 2. **Backup API Token** di tempat yang aman
 3. **Test koneksi secara berkala** untuk memastikan API masih aktif
-4. **Periksa quota/limit** di WAHA jika tiba-tiba gagal setelah sebelumnya berhasil
+4. **Pastikan GOWA server selalu running** dan WhatsApp tetap connected
 5. **Monitor log** untuk mendeteksi masalah lebih awal
 
 ## 📚 Referensi
 
-- [WAHA API Documentation](https://waha.devlike.pro/)
+- [GOWA GitHub Repository](https://github.com/aldinokemal/go-whatsapp-web-multidevice)
+- [GOWA API Documentation](https://github.com/aldinokemal/go-whatsapp-web-multidevice#features)
 - [Dokumentasi WhatsApp Template System](./modular_whatsapp_template_feature.md)
 - [Dokumentasi Payment Reminder System](./payment_reminder_system.md)
 
 ## ❓ FAQ
 
 **Q: Apakah API Token bisa kosong?**  
-A: **TIDAK**. WAHA API memerlukan API Token untuk autentikasi. Jika kosong, semua request akan gagal dengan error 401.
+A: **TIDAK**. GOWA API memerlukan API Token untuk autentikasi. Jika kosong, semua request akan gagal dengan error 401.
 
 **Q: Dimana mendapatkan API Token?**  
-A: Dari dashboard WAHA Anda, menu Settings → Security atau API Configuration.
+A: API Token di-set saat menjalankan GOWA server melalui environment variable `WHATSAPP_API_KEY`.
 
 **Q: Apakah API Token bisa diganti?**  
-A: Ya, tapi pastikan update juga di aplikasi ini setelah mengganti token di WAHA.
+A: Ya, tapi pastikan update juga di aplikasi ini setelah mengganti token di GOWA server.
 
 **Q: Kenapa sebelumnya bisa kirim WhatsApp tanpa API Token?**  
-A: Kemungkinan WAHA belum mengaktifkan autentikasi, atau ada perubahan konfigurasi di WAHA.
+A: Kemungkinan menggunakan provider WhatsApp yang berbeda sebelumnya.
 
 **Q: Apakah ini bug dari fitur baru?**  
 A: **BUKAN**. Ini masalah konfigurasi. Fitur-fitur baru yang ditambahkan tidak mengubah cara kerja autentikasi WhatsApp. Sistem sudah mencoba mengirim WhatsApp dengan benar, tapi ditolak karena tidak ada API Token.

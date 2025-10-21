@@ -334,9 +334,10 @@ A: Cek permission folder storage/app/public/invoices/
 **Q: WhatsApp tidak terkirim**
 ```
 A: Cek:
-   - WAHA API running
+   - GOWA server running dan connected
    - Internet connection
    - Customer phone number valid
+   - API Token sudah di-set dengan benar
 ```
 
 **Q: File tidak ditemukan**

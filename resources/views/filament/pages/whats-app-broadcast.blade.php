@@ -129,8 +129,8 @@
                                         Ketik pesan untuk melihat preview...
                                     </p>
                                 @else
-                                    <div class="text-white text-sm whitespace-pre-wrap break-words prose prose-sm max-w-none prose-strong:font-bold prose-strong:text-white prose-em:italic prose-em:text-white">
-                                        {!! nl2br(strip_tags($message, '<strong><em><b><i><s><del><strike><code><br><p><ul><ol><li><h2><h3><blockquote>')) !!}
+                                    <div class="text-white text-sm whitespace-pre-wrap break-words">
+                                        {{ $this->getPreviewMessage() }}
                                     </div>
                                 @endif
                                 

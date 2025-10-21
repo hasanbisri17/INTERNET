@@ -30,7 +30,7 @@ class WhatsAppSettingResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Section::make('⚠️ Penting: API Token Wajib Diisi')
-                    ->description('WAHA API memerlukan API Token untuk autentikasi. Tanpa API Token, pengiriman WhatsApp akan gagal dengan error 401 Unauthorized.')
+                    ->description('GOWA API memerlukan API Token untuk autentikasi. Tanpa API Token, pengiriman WhatsApp akan gagal dengan error 401 Unauthorized.')
                     ->schema([
                         Forms\Components\Placeholder::make('token_info')
                             ->label('')
@@ -44,16 +44,17 @@ class WhatsAppSettingResource extends Resource
                                         </div>
                                         <div class="flex-1">
                                             <p class="text-sm text-amber-800 dark:text-amber-200 font-semibold mb-2">
-                                                🔑 Cara Mendapatkan API Token WAHA:
+                                                🔑 Cara Mendapatkan API Token GOWA:
                                             </p>
                                             <ol class="text-sm text-amber-700 dark:text-amber-300 space-y-1 list-decimal list-inside">
-                                                <li>Buka dashboard WAHA Anda</li>
-                                                <li>Masuk ke menu <strong>Settings → Security</strong></li>
-                                                <li>Copy API Token yang tersedia</li>
-                                                <li>Paste ke field API Token di bawah</li>
+                                                <li>Buka dashboard GOWA Anda (biasanya di port 3000)</li>
+                                                <li>Login dengan QR Code WhatsApp</li>
+                                                <li>Set API Key di environment variable <strong>WHATSAPP_API_KEY</strong></li>
+                                                <li>Gunakan API Key tersebut di field API Token di bawah</li>
                                             </ol>
                                             <p class="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                                                ⚠️ Jika API Token kosong, semua pengiriman WhatsApp akan gagal!
+                                                ⚠️ Jika API Token kosong, semua pengiriman WhatsApp akan gagal!<br/>
+                                                📖 Dokumentasi: <a href="https://github.com/aldinokemal/go-whatsapp-web-multidevice" target="_blank" class="underline">github.com/aldinokemal/go-whatsapp-web-multidevice</a>
                                             </p>
                                         </div>
                                     </div>
@@ -64,22 +65,18 @@ class WhatsAppSettingResource extends Resource
                             ->label('API Token (X-API-Key)')
                             ->required()
                             ->maxLength(255)
-                            ->placeholder('Masukkan API Token dari WAHA')
-                            ->helperText('Token autentikasi untuk WAHA API. Field ini WAJIB diisi!'),
+                            ->placeholder('Masukkan API Token dari GOWA')
+                            ->helperText('Token autentikasi untuk GOWA API. Field ini WAJIB diisi!'),
                     ])
                     ->collapsible()
                     ->collapsed(false),
                 Forms\Components\TextInput::make('api_url')
                     ->label('API URL')
-                    ->default('https://api.fonnte.com')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('session')
-                    ->label('Session')
-                    ->default('default')
+                    ->default('http://localhost:3000')
                     ->required()
                     ->maxLength(255)
-                    ->helperText('Nama session yang tersedia di WAHA'),
+                    ->placeholder('http://localhost:3000')
+                    ->helperText('URL server GOWA Anda. Contoh: http://43.133.137.52:3000 atau https://wa.domain.com'),
                 Forms\Components\TextInput::make('default_country_code')
                     ->label('Kode Negara Default')
                     ->default('62')

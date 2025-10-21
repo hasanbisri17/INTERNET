@@ -26,12 +26,12 @@ class WhatsAppService
             throw new \Exception('WhatsApp settings not configured. Please configure WhatsApp settings first in WhatsApp → Pengaturan WhatsApp menu.');
         }
 
-        // Validate API token is not empty (WAHA API requires authentication)
+        // Validate API token is not empty (GOWA API requires authentication)
         if (empty($this->settings->api_token)) {
-            throw new \Exception('WhatsApp API Token is required. Please set your WAHA API token in WhatsApp → Pengaturan WhatsApp menu. Error: API Token tidak boleh kosong.');
+            throw new \Exception('WhatsApp API Token is required. Please set your GOWA API token in WhatsApp → Pengaturan WhatsApp menu. Error: API Token tidak boleh kosong.');
         }
 
-        // WAHA API endpoint
+        // GOWA API endpoint
         $baseUrl = rtrim($this->settings->api_url, '/') . '/';
 
         $headers = [
@@ -39,7 +39,7 @@ class WhatsAppService
             'Accept' => 'application/json',
         ];
         
-        // Add API token to headers (required for WAHA API)
+        // Add API token to headers (required for GOWA API)
         $headers['X-API-Key'] = $this->settings->api_token;
 
         $this->client = new Client([
@@ -166,18 +166,17 @@ class WhatsAppService
     }
 
     /**
-     * Send a WhatsApp message using WAHA API
+     * Send a WhatsApp message using GOWA API
      */
     public function sendMessage(string $phone, string $message, array $options = []): array
     {
         try {
             $phone = $this->formatPhone($phone);
             
-            // Build JSON data for WAHA API
+            // Build JSON data for GOWA API (no session needed)
             $jsonData = [
-                'chatId' => $phone . '@c.us',
-                'text' => $message,
-                'session' => $this->settings->session ?? 'default',
+                'phone' => $phone,
+                'message' => $message,
             ];
 
             // Add any additional options
@@ -186,25 +185,81 @@ class WhatsAppService
             }
 
             // Log request data for debugging
-            Log::info('WAHA API Request', [
-                'endpoint' => 'api/sendText',
+            Log::info('GOWA API Request', [
+                'endpoint' => 'send/message',
                 'data' => $jsonData
             ]);
 
-            // Send message using WAHA API
-            $response = $this->client->post('api/sendText', [
-                'json' => $jsonData
-            ]);
+            // GOWA API v7.8.0 endpoint (verified via testing)
+            // Endpoint: /send/message
+            $endpoints = [
+                'send/message',        // ✅ CORRECT endpoint (verified)
+                'send/text',           // Fallback
+                'api/send/message',    // Alternative
+                'api/send/text',       // Alternative
+            ];
+            
+            $lastError = null;
+            $response = null;
+            
+            foreach ($endpoints as $endpoint) {
+                try {
+                    Log::info("Trying GOWA endpoint: {$endpoint}", ['data' => $jsonData]);
+                    
+                    $response = $this->client->post($endpoint, [
+                        'json' => $jsonData,
+                        'timeout' => 30,
+                        'connect_timeout' => 10,
+                    ]);
+                    
+                    // If successful, break the loop
+                    Log::info("✅ Success with endpoint: {$endpoint}");
+                    break;
+                } catch (\GuzzleHttp\Exception\ClientException $e) {
+                    $statusCode = $e->getResponse()->getStatusCode();
+                    $body = $e->getResponse()->getBody()->getContents();
+                    
+                    Log::warning("Failed with endpoint {$endpoint}", [
+                        'status' => $statusCode,
+                        'response' => $body
+                    ]);
+                    
+                    // Check if it's authentication error (WhatsApp not connected)
+                    if ($statusCode == 401 && strpos($body, 'not connect to services server') !== false) {
+                        throw new \Exception('WhatsApp belum tersambung ke GOWA server. Silakan login/scan QR Code di dashboard GOWA: ' . $this->settings->api_url);
+                    }
+                    
+                    $lastError = $e;
+                    continue;
+                } catch (\Exception $e) {
+                    Log::warning("Failed with endpoint {$endpoint}: " . $e->getMessage());
+                    $lastError = $e;
+                    continue;
+                }
+            }
+            
+            // If all endpoints failed, throw the last error
+            if (!isset($response) || $response === null) {
+                throw new \Exception('All GOWA endpoints failed. Last error: ' . ($lastError ? $lastError->getMessage() : 'Unknown'));
+            }
 
             $result = json_decode($response->getBody()->getContents(), true);
             
             // Log full response for debugging
-            Log::info('WAHA API Response', [
+            Log::info('GOWA API Response', [
                 'response' => $result
             ]);
             
-            // WAHA API success handling
-            if (isset($result['id']) || isset($result['key']) || isset($result['message']) || !empty($result)) {
+            // GOWA API success handling
+            if (isset($result['status']) && $result['status'] === true) {
+                return [
+                    'success' => true,
+                    'response' => $result,
+                ];
+            }
+            
+            // Fallback: check for id or message field
+            if (isset($result['id']) || isset($result['message']) || !empty($result)) {
                 return [
                     'success' => true,
                     'response' => $result,
@@ -212,7 +267,7 @@ class WhatsAppService
             }
             
             // Jika respons kosong, anggap gagal
-            $errorMessage = 'Empty response from WAHA API';
+            $errorMessage = 'Empty response from GOWA API';
             throw new \Exception($errorMessage);
         }
         catch (\Exception $e) {
@@ -231,7 +286,7 @@ class WhatsAppService
     }
     
     /**
-     * Send a document/file via WhatsApp using WAHA API
+     * Send a document/file via WhatsApp using GOWA API
      */
     public function sendDocument(string $phone, string $filePath, string $caption = '', array $options = []): array
     {
@@ -243,13 +298,6 @@ class WhatsAppService
                 throw new \Exception("File not found: {$filePath}");
             }
             
-            // Konversi file ke base64 untuk dikirim ke API
-            $fileContent = file_get_contents($filePath);
-            if ($fileContent === false) {
-                throw new \Exception("Failed to read file: {$filePath}");
-            }
-            
-            $base64File = base64_encode($fileContent);
             $fileName = basename($filePath);
             
             // Deteksi MIME type dan tentukan apakah ini gambar atau dokumen
@@ -278,124 +326,112 @@ class WhatsAppService
                 $mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
             }
             
-            // Coba berbagai format endpoint yang mungkin didukung WAHA API
-            $formats = [
-                // Format 1: file.data (nested object)
+            // GOWA API expects multipart/form-data for file uploads
+            $endpoint = $isImage ? 'send/image' : 'send/file';
+            
+            Log::info("Sending file via GOWA API", [
+                'endpoint' => $endpoint,
+                'phone' => $phone,
+                'file_path' => $filePath,
+                'mime_type' => $mimeType,
+                'is_image' => $isImage,
+            ]);
+            
+            // Prepare multipart form data
+            $multipart = [
                 [
-                    'endpoint' => $isImage ? 'api/sendImage' : 'api/sendFile',
-                    'data' => [
-                        'chatId' => $phone . '@c.us',
-                        'file' => [
-                            'mimetype' => $mimeType,
-                            'filename' => $fileName,
-                            'data' => $base64File,
-                        ],
-                        'caption' => !empty($caption) ? $caption : '',
-                        'session' => $this->settings->session ?? 'default',
-                    ],
-                    'log_placeholder' => ['file', 'data'],
+                    'name' => 'phone',
+                    'contents' => $phone
                 ],
-                // Format 2: Direct base64 with mimetype
                 [
-                    'endpoint' => $isImage ? 'api/sendImage' : 'api/sendFile',
-                    'data' => [
-                        'chatId' => $phone . '@c.us',
-                        'file' => $base64File,
-                        'mimetype' => $mimeType,
-                        'filename' => $fileName,
-                        'caption' => !empty($caption) ? $caption : '',
-                        'session' => $this->settings->session ?? 'default',
-                    ],
-                    'log_placeholder' => ['file'],
-                ],
-                // Format 3: Data URI
-                [
-                    'endpoint' => $isImage ? 'api/sendImage' : 'api/sendFile',
-                    'data' => [
-                        'chatId' => $phone . '@c.us',
-                        'file' => "data:{$mimeType};base64,{$base64File}",
-                        'caption' => !empty($caption) ? $caption : '',
-                        'session' => $this->settings->session ?? 'default',
-                    ],
-                    'log_placeholder' => ['file'],
-                ],
-                // Format 4: Using 'media' key instead of 'file'
-                [
-                    'endpoint' => $isImage ? 'api/sendImage' : 'api/sendFile',
-                    'data' => [
-                        'chatId' => $phone . '@c.us',
-                        'media' => [
-                            'mimetype' => $mimeType,
-                            'filename' => $fileName,
-                            'data' => $base64File,
-                        ],
-                        'caption' => !empty($caption) ? $caption : '',
-                        'session' => $this->settings->session ?? 'default',
-                    ],
-                    'log_placeholder' => ['media', 'data'],
-                ],
+                    'name' => $isImage ? 'image' : 'file',
+                    'contents' => fopen($filePath, 'r'),
+                    'filename' => $fileName,
+                    'headers' => [
+                        'Content-Type' => $mimeType
+                    ]
+                ]
             ];
             
-            // Coba setiap format sampai berhasil
-            foreach ($formats as $index => $format) {
-                try {
-                    // Merge with additional options
-                    $jsonData = $format['data'];
-                    if (!empty($options)) {
-                        $jsonData = array_merge($jsonData, $options);
-                    }
-                    
-                    // Log request data for debugging (hide base64)
-                    $logData = $jsonData;
-                    foreach ($format['log_placeholder'] as $key) {
-                        if (isset($logData[$key])) {
-                            if (is_array($logData[$key]) && isset($logData[$key]['data'])) {
-                                $logData[$key]['data'] = '[BASE64_CONTENT]';
-                            } else {
-                                $logData[$key] = '[BASE64_CONTENT]';
-                            }
-                        }
-                    }
-                    
-                    Log::info("WAHA API Request (Format #{$index})", [
-                        'endpoint' => $format['endpoint'],
-                        'data' => $logData
-                    ]);
-                    
-                    // Send to WAHA API
-                    $response = $this->client->post($format['endpoint'], [
-                        'json' => $jsonData
-                    ]);
-                    
-                    $result = json_decode($response->getBody()->getContents(), true);
-                    
-                    // Log full response for debugging
-                    Log::info("WAHA API Response (Format #{$index})", [
-                        'response' => $result
-                    ]);
-                    
-                    // WAHA API success handling
-                    if (isset($result['id']) || isset($result['key']) || isset($result['message']) || !empty($result)) {
-                        Log::info("✅ Success with Format #{$index}!");
-                        return [
-                            'success' => true,
-                            'response' => $result,
-                        ];
-                    }
-                } catch (\Exception $error) {
-                    // Log error from this format
-                    Log::warning("Failed Format #{$index} ({$format['endpoint']}): " . $error->getMessage());
-                    
-                    // Continue to next format
-                    continue;
+            // Add caption if provided
+            if (!empty($caption)) {
+                $multipart[] = [
+                    'name' => 'caption',
+                    'contents' => $caption
+                ];
+            }
+            
+            // Add additional options
+            if (!empty($options)) {
+                foreach ($options as $key => $value) {
+                    $multipart[] = [
+                        'name' => $key,
+                        'contents' => is_array($value) ? json_encode($value) : $value
+                    ];
                 }
             }
             
-            // Jika semua metode gagal, throw exception
-            $errorMessage = 'All sending methods failed. Check WAHA API configuration.';
-            throw new \Exception($errorMessage);
-        }
-        catch (\Exception $e) {
+            Log::info("GOWA API Request (Multipart)", [
+                'endpoint' => $endpoint,
+                'phone' => $phone,
+                'filename' => $fileName,
+                'mime_type' => $mimeType,
+                'has_caption' => !empty($caption),
+            ]);
+            
+            // Send to GOWA API using multipart/form-data
+            $response = $this->client->post($endpoint, [
+                'multipart' => $multipart,
+                'timeout' => 60,
+                'connect_timeout' => 10,
+            ]);
+            
+            $result = json_decode($response->getBody()->getContents(), true);
+            
+            Log::info("GOWA API Response", [
+                'response' => $result
+            ]);
+            
+            // GOWA API success handling
+            if (isset($result['status']) && $result['status'] === true) {
+                Log::info("✅ Success sending " . ($isImage ? 'image' : 'file') . "!");
+                return [
+                    'success' => true,
+                    'response' => $result,
+                ];
+            }
+            
+            // Fallback: check for id or message field
+            if (isset($result['id']) || isset($result['message']) || !empty($result)) {
+                Log::info("✅ Success sending " . ($isImage ? 'image' : 'file') . "!");
+                return [
+                    'success' => true,
+                    'response' => $result,
+                ];
+            }
+            
+            // If we get here, response was unexpected
+            throw new \Exception("Unexpected response from GOWA API: " . json_encode($result));
+            
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            $body = $e->getResponse()->getBody()->getContents();
+            
+            Log::error("GOWA API Client Error", [
+                'status' => $statusCode,
+                'response' => $body,
+            ]);
+            
+            // Check if WhatsApp not connected
+            if ($statusCode == 401 && strpos($body, 'not connect to services server') !== false) {
+                throw new \Exception('WhatsApp belum tersambung ke GOWA server. Silakan login/scan QR Code di dashboard GOWA: ' . $this->settings->api_url);
+            }
+            
+            return [
+                'success' => false,
+                'error' => "Failed to send " . ($isImage ? 'image' : 'file') . ": " . $body,
+            ];
+        } catch (\Exception $e) {
             Log::error('WhatsApp document sending failed: ' . $e->getMessage(), [
                 'phone' => $phone,
                 'file' => $filePath,

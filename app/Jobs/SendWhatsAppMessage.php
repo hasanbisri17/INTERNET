@@ -38,9 +38,9 @@ class SendWhatsAppMessage implements ShouldQueue
         $result = $service->sendMessage($this->phone, $this->message, $this->options);
 
         // Logging untuk debugging
-        Log::info('WAHA API Response', ['result' => $result]);
+        Log::info('GOWA API Response', ['result' => $result]);
 
-        // Periksa apakah pesan berhasil terkirim - WAHA API format
+        // Periksa apakah pesan berhasil terkirim - GOWA API format
         $isSuccess = true; // Default anggap berhasil
         
         // Hanya anggap gagal jika ada error yang jelas
@@ -50,15 +50,15 @@ class SendWhatsAppMessage implements ShouldQueue
             }
         }
         
-        // WAHA API success indicators
+        // GOWA API success indicators
         if (isset($result['response'])) {
-            // Jika response berisi id atau key, selalu anggap sukses (WAHA format)
-            if (isset($result['response']['id']) || isset($result['response']['key'])) {
+            // Jika response berisi status true, selalu anggap sukses (GOWA format)
+            if (isset($result['response']['status']) && $result['response']['status'] === true) {
                 $isSuccess = true;
             }
             
-            // Jika response berisi message, selalu anggap sukses (WAHA format)
-            if (isset($result['response']['message'])) {
+            // Jika response berisi id atau message, selalu anggap sukses
+            if (isset($result['response']['id']) || isset($result['response']['message'])) {
                 $isSuccess = true;
             }
         }
@@ -90,7 +90,7 @@ class SendWhatsAppMessage implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         // Logging untuk debugging
-        Log::error('WAHA Message Failed', [
+        Log::error('GOWA Message Failed', [
             'id' => $this->whatsAppMessageId,
             'error' => $exception->getMessage()
         ]);

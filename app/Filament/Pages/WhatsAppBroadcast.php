@@ -125,18 +125,13 @@ class WhatsAppBroadcast extends Page implements HasForms
                             ->toolbarButtons([
                                 'bold',
                                 'italic',
-                                'underline',
                                 'strike',
                                 'bulletList',
                                 'orderedList',
-                                'h2',
-                                'h3',
-                                'blockquote',
-                                'codeBlock',
                                 'undo',
                                 'redo',
                             ])
-                            ->helperText('📌 Gunakan variabel: {nama}, {paket}, {tagihan}, {status} | 😊 Emoji: Win+. (Windows) atau Cmd+Ctrl+Space (Mac) | Formatting akan diubah ke format WhatsApp')
+                            ->helperText('📌 Gunakan variabel: {nama}, {paket}, {email}, {phone} | 😊 Emoji: Win+. | Format bold/italic akan otomatis diubah ke format WhatsApp (*bold*, _italic_)')
                             ->columnSpanFull(),
                     ])
                     ->collapsible(),
@@ -223,10 +218,19 @@ class WhatsAppBroadcast extends Page implements HasForms
 
             Log::info('Recipients found', ['count' => $recipients->count()]);
 
+            // Convert HTML from RichEditor to WhatsApp format
+            $whatsappMessage = $this->convertHtmlToWhatsApp($data['message']);
+            
+            Log::info('Message converted', [
+                'original_length' => strlen($data['message']),
+                'converted_length' => strlen($whatsappMessage),
+                'preview' => substr($whatsappMessage, 0, 100),
+            ]);
+            
             // Create broadcast campaign record
             $campaign = BroadcastCampaign::create([
                 'title' => $data['title'] ?? 'Broadcast ' . now()->format('d M Y H:i'),
-                'message' => $data['message'],
+                'message' => $whatsappMessage,
                 'media_path' => $data['media'] ?? $data['document'] ?? null,
                 'media_type' => !empty($data['media']) ? 'image' : (!empty($data['document']) ? 'document' : null),
                 'recipient_type' => $data['recipient_type'],
@@ -246,7 +250,7 @@ class WhatsAppBroadcast extends Page implements HasForms
             \App\Jobs\SendBroadcastMessagesJob::dispatch(
                 $campaign,
                 $recipients->toArray(),
-                $data['message'],
+                $whatsappMessage,
                 $data['media'] ?? null,
                 $data['document'] ?? null
             );
@@ -410,6 +414,17 @@ class WhatsAppBroadcast extends Page implements HasForms
         } catch (\Exception $e) {
             return 0;
         }
+    }
+
+    /**
+     * Get preview message in WhatsApp format (for live preview)
+     */
+    public function getPreviewMessage(): string
+    {
+        if (empty($this->message)) {
+            return '';
+        }
+        return $this->convertHtmlToWhatsApp($this->message);
     }
     
     /**

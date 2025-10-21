@@ -3,16 +3,17 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | WAHA WhatsApp Gateway Configuration
+    | GOWA WhatsApp Gateway Configuration
     |--------------------------------------------------------------------------
     |
-    | Here you can configure your WAHA WhatsApp Gateway settings.
+    | Here you can configure your GOWA (go-whatsapp-web-multidevice) Gateway settings.
+    | GOWA: https://github.com/aldinokemal/go-whatsapp-web-multidevice
     |
     */
 
-    'api_token' => env('WAHA_API_TOKEN', ''),
+    'api_token' => env('GOWA_API_TOKEN', ''),
     
-    'api_url' => env('WAHA_API_URL', 'https://waha-pj8tw4c4otz1.wax.biz.id'),
+    'api_url' => env('GOWA_API_URL', 'http://43.133.137.52:3000'),
 
     'message_templates' => [
         'billing' => [
