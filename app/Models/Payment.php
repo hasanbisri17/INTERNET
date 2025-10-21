@@ -22,6 +22,8 @@ class Payment extends Model
         'internet_package_id',
         'payment_method_id',
         'invoice_number',
+        'billing_month',
+        'billing_year',
         'amount',
         'status',
         'due_date',

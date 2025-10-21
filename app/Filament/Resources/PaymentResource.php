@@ -72,6 +72,34 @@ class PaymentResource extends Resource
                     ->disabled()
                     ->dehydrated()
                     ->required(),
+                Forms\Components\Select::make('billing_month')
+                    ->label('Bulan Tagihan')
+                    ->options([
+                        1 => 'Januari',
+                        2 => 'Februari',
+                        3 => 'Maret',
+                        4 => 'April',
+                        5 => 'Mei',
+                        6 => 'Juni',
+                        7 => 'Juli',
+                        8 => 'Agustus',
+                        9 => 'September',
+                        10 => 'Oktober',
+                        11 => 'November',
+                        12 => 'Desember',
+                    ])
+                    ->default(fn () => now()->month)
+                    ->required()
+                    ->native(false)
+                    ->columnSpan(1),
+                Forms\Components\TextInput::make('billing_year')
+                    ->label('Tahun Tagihan')
+                    ->numeric()
+                    ->default(fn () => now()->year)
+                    ->required()
+                    ->minValue(2020)
+                    ->maxValue(2100)
+                    ->columnSpan(1),
                 Forms\Components\TextInput::make('amount')
                     ->label('Jumlah Tagihan')
                     ->numeric()
@@ -155,6 +183,22 @@ class PaymentResource extends Resource
                 Tables\Columns\TextColumn::make('internetPackage.name')
                     ->label('Paket')
                     ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('billing_period')
+                    ->label('Periode')
+                    ->getStateUsing(function (Payment $record): string {
+                        if (!$record->billing_month || !$record->billing_year) {
+                            return '-';
+                        }
+                        $months = [
+                            1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr',
+                            5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agu',
+                            9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
+                        ];
+                        return ($months[$record->billing_month] ?? '') . ' ' . $record->billing_year;
+                    })
+                    ->badge()
+                    ->color('info')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Jumlah')
