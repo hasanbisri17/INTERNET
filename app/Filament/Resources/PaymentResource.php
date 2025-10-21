@@ -432,7 +432,7 @@ class PaymentResource extends Resource
                 ]),
             ])
             ->checkIfRecordIsSelectableUsing(
-                fn (Payment $record): bool => $record->status !== 'paid' && $record->status !== 'canceled'
+                fn (Payment $record): bool => $record->status !== 'paid'
             );
     }
 
