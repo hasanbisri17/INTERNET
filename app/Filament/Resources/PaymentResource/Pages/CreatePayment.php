@@ -18,10 +18,10 @@ class CreatePayment extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Send WhatsApp notification for new bill
+        // Send WhatsApp notification for new bill WITH PDF INVOICE
         try {
             $whatsapp = new WhatsAppService();
-            $whatsapp->sendBillingNotification($this->record, 'new');
+            $whatsapp->sendBillingNotification($this->record, 'new', true); // true = send PDF invoice
         } catch (\Exception $e) {
             Notification::make()
                 ->warning()
