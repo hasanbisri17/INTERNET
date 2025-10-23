@@ -30,6 +30,7 @@ class WhatsAppTemplateSettings extends Page
         $this->form->fill([
             'template_billing_new' => Setting::get('whatsapp_template_billing_new'),
             'template_billing_paid' => Setting::get('whatsapp_template_billing_paid'),
+            'template_status_overdue' => Setting::get('whatsapp_template_status_overdue'),
             'template_service_suspended' => Setting::get('whatsapp_template_service_suspended'),
             'template_service_reactivated' => Setting::get('whatsapp_template_service_reactivated'),
         ]);
@@ -118,6 +119,21 @@ class WhatsAppTemplateSettings extends Page
                             ->native(false)
                             ->placeholder('Pilih template untuk konfirmasi pembayaran')
                             ->helperText('Template yang akan digunakan saat pembayaran berhasil diterima'),
+                        
+                        // Template untuk status payment overdue
+                        Forms\Components\Select::make('template_status_overdue')
+                            ->label('Status Payment Overdue')
+                            ->options(function () {
+                                return WhatsAppTemplate::where('template_type', WhatsAppTemplate::TYPE_STATUS_OVERDUE)
+                                    ->where('is_active', true)
+                                    ->orderBy('order', 'asc')
+                                    ->pluck('name', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
+                            ->native(false)
+                            ->placeholder('Pilih template untuk status payment overdue')
+                            ->helperText('Template yang akan digunakan saat status payment berubah menjadi overdue (sebelum suspend)'),
                     ])
                     ->columns(1)
                     ->collapsible(),
@@ -187,6 +203,7 @@ class WhatsAppTemplateSettings extends Page
             $mappings = [
                 'whatsapp_template_billing_new' => $data['template_billing_new'] ?? null,
                 'whatsapp_template_billing_paid' => $data['template_billing_paid'] ?? null,
+                'whatsapp_template_status_overdue' => $data['template_status_overdue'] ?? null,
                 'whatsapp_template_service_suspended' => $data['template_service_suspended'] ?? null,
                 'whatsapp_template_service_reactivated' => $data['template_service_reactivated'] ?? null,
             ];

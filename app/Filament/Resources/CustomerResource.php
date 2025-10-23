@@ -3,8 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CustomerResource\Pages;
+use App\Filament\Resources\CustomerResource\RelationManagers;
 use App\Models\Customer;
 use App\Models\InternetPackage;
+use App\Models\MikrotikIpBinding;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -49,53 +51,23 @@ class CustomerResource extends Resource
                     ->required()
                     ->options(InternetPackage::where('is_active', true)->pluck('name', 'id'))
                     ->searchable(),
-                Forms\Components\Select::make('connection_type')
-                    ->label('Jenis Koneksi')
-                    ->options([
-                        'pppoe' => 'PPPOE',
-                        'static' => 'STATIC',
-                    ])
-                    ->default('pppoe')
-                    ->required()
-                    ->native(false)
-                    ->live()
-                    ->disabled(fn (?Customer $record): bool => $record !== null) // Disable on edit
-                    ->afterStateUpdated(function ($state, Forms\Set $set) {
-                        // Clear fields when connection type changes
-                        $set('pppoe_username', null);
-                        $set('pppoe_password', null);
-                        $set('customer_id', null);
-                    }),
-                Forms\Components\TextInput::make('pppoe_username')
-                    ->label('Username PPPOE')
-                    ->disabled()
-                    ->dehydrated()
-                    ->visible(fn (Forms\Get $get): bool => $get('connection_type') === 'pppoe')
-                    ->helperText(fn (?Customer $record): string => 
-                        $record === null 
-                            ? 'Username akan di-generate otomatis oleh sistem' 
-                            : 'Username tidak dapat diubah'
-                    ),
-                Forms\Components\TextInput::make('pppoe_password')
-                    ->label('Password PPPOE')
-                    ->disabled()
-                    ->dehydrated()
-                    ->visible(fn (Forms\Get $get): bool => $get('connection_type') === 'pppoe')
-                    ->helperText(fn (?Customer $record): string => 
-                        $record === null 
-                            ? 'Password akan di-generate otomatis oleh sistem' 
-                            : 'Password tidak dapat diubah'
-                    ),
-                Forms\Components\TextInput::make('customer_id')
-                    ->label('ID Pelanggan')
-                    ->disabled()
-                    ->dehydrated()
-                    ->visible(fn (Forms\Get $get): bool => $get('connection_type') === 'static')
-                    ->helperText(fn (?Customer $record): string => 
-                        $record === null 
-                            ? 'ID Pelanggan akan di-generate otomatis oleh sistem' 
-                            : 'ID Pelanggan tidak dapat diubah'
-                    ),
+
+                Forms\Components\Placeholder::make('ip_bindings_info')
+                    ->label('💡 Info IP Bindings')
+                    ->content(function (?Customer $record): string {
+                        if (!$record || !$record->exists) {
+                            return '⚠️ Setelah customer dibuat, Anda dapat mengelola IP Bindings di tab "IP Bindings" yang akan muncul di halaman edit.';
+                        }
+
+                        $count = $record->ipBindings()->count();
+                        if ($count === 0) {
+                            return '📋 Customer ini belum memiliki IP Bindings. Klik tab "IP Bindings" di atas untuk menambahkan.';
+                        }
+
+                        return "✅ Customer ini memiliki {$count} IP Binding(s). Klik tab \"IP Bindings\" di atas untuk mengelola.";
+                    })
+                    ->columnSpanFull()
+                    ->visible(fn (?Customer $record): bool => $record === null || !$record->exists),
             ]);
     }
 
@@ -105,35 +77,24 @@ class CustomerResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('phone')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('internetPackage.name')
                     ->label('Paket Internet')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('internetPackage.speed')
-                    ->label('Kecepatan')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('connection_type')
-                    ->label('Jenis Koneksi')
+                Tables\Columns\TextColumn::make('ipBindings')
+                    ->label('IP Bindings')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pppoe' => 'success',
-                        'static' => 'info',
-                        default => 'gray',
+                    ->formatStateUsing(fn (Customer $record): string => $record->ipBindings()->count() . ' IP')
+                    ->color(fn (Customer $record): string => $record->ipBindings()->count() > 0 ? 'success' : 'gray')
+                    ->tooltip(function (Customer $record): ?string {
+                        $bindings = $record->ipBindings()->get();
+                        if ($bindings->isEmpty()) {
+                            return 'Belum ada IP Bindings';
+                        }
+                        return $bindings->pluck('address')->join(', ');
                     })
-                    ->formatStateUsing(fn (string $state): string => strtoupper($state)),
-                Tables\Columns\TextColumn::make('pppoe_username')
-                    ->label('Username PPPOE')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false)
-                    ->placeholder('-'),
-                Tables\Columns\TextColumn::make('customer_id')
-                    ->label('ID Pelanggan')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false)
-                    ->placeholder('-'),
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -160,7 +121,7 @@ class CustomerResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\IpBindingsRelationManager::class,
         ];
     }
 

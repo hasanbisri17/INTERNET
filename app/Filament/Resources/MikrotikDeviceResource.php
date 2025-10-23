@@ -4,12 +4,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\MikrotikDeviceResource\Pages;
 use App\Models\MikrotikDevice;
-use App\Services\MikrotikService;
+use App\Services\MikrotikApiService;
+use App\Services\MikrotikProfileService;
+use App\Services\MikrotikPppService;
+use App\Services\MikrotikMonitoringService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
 
 class MikrotikDeviceResource extends Resource
@@ -117,74 +121,132 @@ class MikrotikDeviceResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\Action::make('test_connection')
-                    ->label('Tes Koneksi')
-                    ->icon('heroicon-o-link')
-                    ->color('success')
-                    ->action(function (MikrotikDevice $record) {
-                        $service = new MikrotikService();
-                        
-                        try {
-                            if ($service->connect($record)) {
-                                $systemInfo = $service->getSystemInfo();
-                                $service->disconnect();
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('test_connection')
+                        ->label('Tes Koneksi')
+                        ->icon('heroicon-o-link')
+                        ->color('success')
+                        ->action(function (MikrotikDevice $record) {
+                            $apiService = new MikrotikApiService();
+                            
+                            try {
+                                $result = $apiService->testConnection($record);
                                 
-                                $message = 'Koneksi berhasil! ' . 
-                                    'Perangkat: ' . ($systemInfo[0]['board-name'] ?? 'Unknown') . 
-                                    ', Versi: ' . ($systemInfo[0]['version'] ?? 'Unknown');
+                                if ($result['success']) {
+                                    $data = $result['data'];
+                                    $message = 'Koneksi berhasil! ' . 
+                                        'Perangkat: ' . ($data['board-name'] ?? 'Unknown') . 
+                                        ', Versi: ' . ($data['version'] ?? 'Unknown');
+                                    
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Koneksi Berhasil')
+                                        ->body($message)
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Koneksi Gagal')
+                                        ->body($result['message'])
+                                        ->send();
+                                }
+                            } catch (\Exception $e) {
+                                Log::error('MikroTik test connection error', [
+                                    'device_id' => $record->id,
+                                    'error' => $e->getMessage(),
+                                ]);
                                 
-                                \Filament\Notifications\Notification::make()
-                                    ->success()
-                                    ->title('Koneksi Berhasil')
-                                    ->body($message)
-                                    ->duration(5000)
-                                    ->send();
-                                
-                                return [
-                                    'success' => true,
-                                    'message' => $message,
-                                ];
-                            } else {
-                                $message = 'Koneksi gagal. Periksa kredensial dan alamat IP.';
-                                
-                                \Filament\Notifications\Notification::make()
+                                Notification::make()
                                     ->danger()
-                                    ->title('Koneksi Gagal')
-                                    ->body($message)
-                                    ->duration(5000)
+                                    ->title('Error')
+                                    ->body($e->getMessage())
                                     ->send();
-                                
-                                return [
-                                    'success' => false,
-                                    'message' => $message,
-                                ];
                             }
-                        } catch (\Exception $e) {
-                            Log::error('MikroTik test connection error: ' . $e->getMessage(), [
-                                'device_id' => $record->id,
-                            ]);
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('Tes Koneksi MikroTik')
+                        ->modalDescription('Menguji koneksi ke perangkat MikroTik')
+                        ->modalSubmitActionLabel('Tes Koneksi'),
+                    
+                    Tables\Actions\Action::make('sync_profiles')
+                        ->label('Sinkronisasi Profil')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('info')
+                        ->action(function (MikrotikDevice $record) {
+                            $profileService = new MikrotikProfileService();
                             
-                            $message = 'Error: ' . $e->getMessage();
+                            try {
+                                $result = $profileService->syncAllProfiles($record);
+                                
+                                if ($result['success']) {
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Sinkronisasi Berhasil')
+                                        ->body("Berhasil sinkronisasi {$result['synced']} profil")
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Sinkronisasi Gagal')
+                                        ->body($result['message'])
+                                        ->send();
+                                }
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Error')
+                                    ->body($e->getMessage())
+                                    ->send();
+                            }
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('Sinkronisasi Profil PPP')
+                        ->modalDescription('Mengimpor semua profil PPP dari MikroTik ke database')
+                        ->modalSubmitActionLabel('Sinkronisasi'),
+                    
+                    Tables\Actions\Action::make('check_monitoring')
+                        ->label('Cek Status')
+                        ->icon('heroicon-o-chart-bar')
+                        ->color('warning')
+                        ->action(function (MikrotikDevice $record) {
+                            $monitoringService = new MikrotikMonitoringService();
                             
-                            \Filament\Notifications\Notification::make()
-                                ->danger()
-                                ->title('Koneksi Gagal')
-                                ->body($message)
-                                ->duration(5000)
-                                ->send();
-                            
-                            return [
-                                'success' => false,
-                                'message' => $message,
-                            ];
-                        }
-                    })
-                    ->requiresConfirmation()
-                    ->modalHeading('Tes Koneksi MikroTik')
-                    ->modalDescription('Apakah Anda yakin ingin menguji koneksi ke perangkat ini?')
-                    ->modalSubmitActionLabel('Tes Koneksi'),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                            try {
+                                $result = $monitoringService->checkDeviceStatus($record);
+                                
+                                if ($result['success']) {
+                                    $data = $result['data'];
+                                    $message = "Status: {$result['status']}\n" .
+                                        "CPU Load: {$data->cpu_load}\n" .
+                                        "Active Users: {$data->active_users}\n" .
+                                        "Uptime: {$data->uptime}";
+                                    
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Status Device')
+                                        ->body($message)
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Device Offline')
+                                        ->body($result['message'])
+                                        ->send();
+                                }
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Error')
+                                    ->body($e->getMessage())
+                                    ->send();
+                            }
+                        }),
+                    
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ])
+                ->button()
+                ->label('Aksi'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

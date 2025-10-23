@@ -44,5 +44,8 @@ class AppServiceProvider extends ServiceProvider
         
         // Mendaftarkan observer untuk model Payment (auto unsuspend via n8n)
         \App\Models\Payment::observe(\App\Observers\PaymentObserver::class);
+        
+        // Mendaftarkan observer untuk model MikrotikIpBinding (with loop protection)
+        \App\Models\MikrotikIpBinding::observe(\App\Observers\MikrotikIpBindingObserver::class);
     }
 }

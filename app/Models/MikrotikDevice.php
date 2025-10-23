@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -36,6 +38,55 @@ class MikrotikDevice extends Model
     {
         $protocol = $this->use_ssl ? 'ssl' : 'tcp';
         return "{$protocol}://{$this->ip_address}:{$this->port}";
+    }
+
+    /**
+     * Get the customers for this mikrotik device
+     */
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class);
+    }
+
+    /**
+     * Get the queues for this mikrotik device
+     */
+    public function queues(): HasMany
+    {
+        return $this->hasMany(MikrotikQueue::class);
+    }
+
+    /**
+     * Get the monitoring logs for this mikrotik device
+     */
+    public function monitoringLogs(): HasMany
+    {
+        return $this->hasMany(MikrotikMonitoringLog::class);
+    }
+
+    /**
+     * Get the latest monitoring log
+     */
+    public function latestMonitoringLog(): HasOne
+    {
+        return $this->hasOne(MikrotikMonitoringLog::class)->latestOfMany('checked_at');
+    }
+
+    /**
+     * Get the auto isolir config for this mikrotik device
+     */
+    public function autoIsolirConfig(): HasOne
+    {
+        return $this->hasOne(AutoIsolirConfig::class);
+    }
+
+    /**
+     * Check if device is online based on latest monitoring
+     */
+    public function isOnline(): bool
+    {
+        $latestLog = $this->latestMonitoringLog;
+        return $latestLog && $latestLog->status === 'online';
     }
 
     /**

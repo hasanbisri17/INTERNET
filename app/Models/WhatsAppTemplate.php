@@ -37,6 +37,7 @@ class WhatsAppTemplate extends Model
     public const TYPE_BILLING_REMINDER_3 = 'billing_reminder_3';
     public const TYPE_BILLING_OVERDUE = 'billing_overdue';
     public const TYPE_BILLING_PAID = 'billing_paid';
+    public const TYPE_STATUS_OVERDUE = 'status_overdue';
     public const TYPE_SERVICE_SUSPENDED = 'service_suspended';
     public const TYPE_SERVICE_REACTIVATED = 'service_reactivated';
     public const TYPE_CUSTOM = 'custom';
@@ -51,8 +52,9 @@ class WhatsAppTemplate extends Model
             self::TYPE_BILLING_REMINDER_1 => 'Pengingat Tagihan (H-3)',
             self::TYPE_BILLING_REMINDER_2 => 'Pengingat Tagihan (H-1)',
             self::TYPE_BILLING_REMINDER_3 => 'Pengingat Tagihan (Jatuh Tempo)',
-            self::TYPE_BILLING_OVERDUE => 'Tagihan Terlambat',
+            self::TYPE_BILLING_OVERDUE => 'Tagihan Terlambat (Reminder)',
             self::TYPE_BILLING_PAID => 'Konfirmasi Pembayaran',
+            self::TYPE_STATUS_OVERDUE => 'Status Payment Overdue',
             self::TYPE_SERVICE_SUSPENDED => 'Penangguhan Layanan',
             self::TYPE_SERVICE_REACTIVATED => 'Pengaktifan Kembali Layanan',
             self::TYPE_CUSTOM => 'Custom / Lainnya',
@@ -214,6 +216,52 @@ class WhatsAppTemplate extends Model
                             "Terima kasih atas kerjasamanya.",
                 'description' => 'Template konfirmasi saat pembayaran berhasil diterima',
                 'variables' => ['customer_name', 'invoice_number', 'amount', 'payment_date'],
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Notifikasi Status Payment Overdue',
+                'code' => 'status.overdue',
+                'template_type' => self::TYPE_STATUS_OVERDUE,
+                'order' => 1,
+                'content' => "Yth. {customer_name},\n\n".
+                            "⚠️ Tagihan Anda telah melewati jatuh tempo.\n\n".
+                            "📅 Due Date: {due_date}\n".
+                            "💰 Total Tagihan: Rp {amount}\n".
+                            "📆 Terlambat: {days_overdue} hari\n\n".
+                            "Layanan akan dinonaktifkan jika pembayaran belum diterima hari ini.\n\n".
+                            "Silakan segera melakukan pembayaran untuk menghindari pemutusan layanan.\n\n".
+                            "Terima kasih.",
+                'description' => 'Template notifikasi saat status payment berubah menjadi overdue',
+                'variables' => ['customer_name', 'invoice_number', 'amount', 'due_date', 'days_overdue'],
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Penangguhan Layanan',
+                'code' => 'service.suspended',
+                'template_type' => self::TYPE_SERVICE_SUSPENDED,
+                'order' => 1,
+                'content' => "Yth. {customer_name},\n\n".
+                            "⛔ Layanan internet Anda telah dinonaktifkan karena pembayaran belum diterima hingga tanggal 25.\n\n".
+                            "📅 Due Date: {due_date}\n".
+                            "💰 Total Tagihan: Rp {amount}\n\n".
+                            "Silakan segera melakukan pembayaran untuk mengaktifkan kembali layanan Anda.\n\n".
+                            "Terima kasih.",
+                'description' => 'Template notifikasi saat layanan customer di-suspend',
+                'variables' => ['customer_name', 'due_date', 'amount'],
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Pengaktifan Kembali Layanan',
+                'code' => 'service.reactivated',
+                'template_type' => self::TYPE_SERVICE_REACTIVATED,
+                'order' => 1,
+                'content' => "Yth. {customer_name},\n\n".
+                            "✅ Layanan internet Anda telah diaktifkan kembali.\n\n".
+                            "Terima kasih atas pembayaran Anda. Selamat menikmati layanan internet kami.\n\n".
+                            "Jika ada kendala, silakan hubungi kami.\n\n".
+                            "Terima kasih.",
+                'description' => 'Template notifikasi saat layanan customer diaktifkan kembali setelah suspend',
+                'variables' => ['customer_name'],
                 'is_active' => true,
             ],
         ];

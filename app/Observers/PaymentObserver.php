@@ -4,7 +4,7 @@ namespace App\Observers;
 
 use App\Models\Payment;
 use App\Models\User;
-use App\Services\DunningService;
+use App\Services\SuspendViaIpBindingService;
 use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
@@ -19,19 +19,43 @@ class PaymentObserver
         // Check if payment status changed to 'paid' or 'confirmed'
         if ($payment->isDirty('status') && in_array($payment->status, ['paid', 'confirmed'])) {
             
-            // 1. Trigger unsuspend webhook via n8n
+            // 1. Auto-unsuspend customer via IP Binding (NEW METHOD)
             try {
-                $dunningService = app(DunningService::class);
-                $result = $dunningService->triggerUnsuspendOnPayment($payment);
+                $customer = $payment->customer;
                 
-                if ($result['success']) {
-                    Log::info("Auto unsuspend triggered for payment {$payment->invoice_number}", [
-                        'customer' => $payment->customer->name,
-                        'payment_id' => $payment->id,
-                    ]);
+                if (!$customer) {
+                    return;
+                }
+                
+                // Cek apakah customer punya IP Binding dengan type 'regular'
+                // (artinya customer dalam status suspended, baik via auto-suspend atau manual)
+                $hasRegularIpBindings = $customer->ipBindings()
+                    ->where('type', 'regular')
+                    ->exists();
+                
+                // Auto-unsuspend jika:
+                // 1. Customer dalam status suspended (is_isolated=true, status=suspended), ATAU
+                // 2. Customer punya IP Binding dengan type 'regular' (suspended manual tapi status tidak update)
+                if ($hasRegularIpBindings || ($customer->is_isolated && $customer->status === 'suspended')) {
+                    $suspendService = new SuspendViaIpBindingService();
+                    $result = $suspendService->unsuspendCustomer($customer);
+                    
+                    if ($result['success']) {
+                        Log::info("Auto unsuspend via IP Binding for payment {$payment->invoice_number}", [
+                            'customer' => $customer->name,
+                            'payment_id' => $payment->id,
+                            'unsuspended_count' => $result['unsuspended_count'] ?? 0,
+                        ]);
+                    } else {
+                        Log::warning("Failed to unsuspend customer via IP Binding", [
+                            'payment' => $payment->invoice_number,
+                            'customer' => $customer->name,
+                            'message' => $result['message'],
+                        ]);
+                    }
                 }
             } catch (\Exception $e) {
-                Log::error("Failed to trigger auto unsuspend for payment {$payment->invoice_number}: {$e->getMessage()}");
+                Log::error("Failed to auto unsuspend via IP Binding for payment {$payment->invoice_number}: {$e->getMessage()}");
             }
             
             // 2. Send WhatsApp notification to customer

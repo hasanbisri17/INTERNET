@@ -35,27 +35,24 @@ class Kernel extends ConsoleKernel
             ->monthlyOn(1, '00:01')
             ->withoutOverlapping();
             
-        // Process dunning and trigger n8n webhooks for overdue payments - 3x daily
-        $schedule->command('dunning:process')
-            ->dailyAt('09:00')  // Pagi
-            ->withoutOverlapping();
-            
-        $schedule->command('dunning:process')
-            ->dailyAt('14:00')  // Siang
-            ->withoutOverlapping();
-            
-        $schedule->command('dunning:process')
-            ->dailyAt('18:00')  // Sore
-            ->withoutOverlapping();
-            
         // Clean old activity logs (older than 6 months) - Run monthly on the 1st at 02:00 AM
         $schedule->command('activitylog:clean --days=180')
             ->monthlyOn(1, '02:00')
             ->withoutOverlapping();
         
+        // Update payment status to overdue - Run daily at 00:01 AM
+        $schedule->command('payments:update-overdue')
+            ->dailyAt('00:01')
+            ->withoutOverlapping();
+        
         // Check upcoming and overdue payments - Run daily at 08:00 AM
         $schedule->command('payments:check-due-dates')
             ->dailyAt('08:00')
+            ->withoutOverlapping();
+            
+        // Auto suspend customers via IP Binding on 26th of each month at 00:01 AM
+        $schedule->command('suspend:auto-ip-binding')
+            ->monthlyOn(26, '00:01')
             ->withoutOverlapping();
     }
 
@@ -78,8 +75,9 @@ class Kernel extends ConsoleKernel
         Commands\TestWhatsAppCommand::class,
         Commands\GenerateMonthlyBills::class,
         Commands\GenerateBillForCustomer::class,
-        Commands\ProcessDunning::class,
         Commands\CleanOldActivityLogs::class,
         Commands\CheckPaymentDueDates::class,
+        Commands\UpdateOverduePayments::class,
+        Commands\AutoSuspendViaIpBindingCommand::class,
     ];
 }

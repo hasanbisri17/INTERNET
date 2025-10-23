@@ -23,6 +23,12 @@ class InternetPackage extends Model
         'speed',
         'description',
         'is_active',
+        'download_speed',
+        'upload_speed',
+        'burst_limit',
+        'burst_threshold',
+        'burst_time',
+        'pool_name',
     ];
 
     protected $casts = [
