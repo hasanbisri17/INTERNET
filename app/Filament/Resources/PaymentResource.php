@@ -491,10 +491,11 @@ class PaymentResource extends Resource
     {
         $whatsapp = new WhatsAppService();
         try {
-            // Get all active customers
-            $customers = \App\Models\Customer::whereHas('internetPackage', function ($query) {
-                $query->where('is_active', true);
-            })->get();
+            // Get all active customers (only status 'active')
+            $customers = \App\Models\Customer::where('status', 'active')
+                ->whereHas('internetPackage', function ($query) {
+                    $query->where('is_active', true);
+                })->get();
 
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $month)->startOfMonth();
             $dueDate = $selectedDate->copy()->addDays(24); // Due date is 25th of the month

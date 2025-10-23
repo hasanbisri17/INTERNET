@@ -44,12 +44,13 @@ class GenerateMonthlyBills extends Command
         $this->info("Generating bills for month: {$month}");
         
         try {
-            // Get all active customers
-            $customers = Customer::whereHas('internetPackage', function ($query) {
-                $query->where('is_active', true);
-            })->get();
+            // Get all active customers (only status 'active')
+            $customers = Customer::where('status', 'active')
+                ->whereHas('internetPackage', function ($query) {
+                    $query->where('is_active', true);
+                })->get();
             
-            $this->info("Found {$customers->count()} active customers");
+            $this->info("Found {$customers->count()} active customers (status='active')");
             
             // Get due date setting from database (default to 25th if not set)
             $dueDateDay = (int) Setting::get('billing_due_day', 25);

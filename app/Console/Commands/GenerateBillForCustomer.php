@@ -42,8 +42,9 @@ class GenerateBillForCustomer extends Command
         try {
             $customer = Customer::findOrFail($customerId);
             
-            if (!$customer->is_active || !$customer->internet_package_id) {
-                $this->warn("Customer {$customer->name} is not active or has no internet package");
+            // Only generate bill for active customers
+            if ($customer->status !== 'active' || !$customer->internet_package_id) {
+                $this->warn("Customer {$customer->name} is not active (status: {$customer->status}) or has no internet package");
                 return Command::FAILURE;
             }
             
