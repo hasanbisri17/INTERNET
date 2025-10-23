@@ -51,6 +51,18 @@ class CustomerResource extends Resource
                     ->required()
                     ->options(InternetPackage::where('is_active', true)->pluck('name', 'id'))
                     ->searchable(),
+                
+                Forms\Components\Select::make('status')
+                    ->label('Status Customer')
+                    ->required()
+                    ->options([
+                        'active' => 'Aktif',
+                        'inactive' => 'Non-Aktif',
+                        'suspended' => 'Suspended',
+                    ])
+                    ->default('active')
+                    ->native(false)
+                    ->helperText('Status customer: Aktif = layanan berjalan, Non-Aktif = tidak berlangganan, Suspended = ditangguhkan karena belum bayar'),
 
                 Forms\Components\Placeholder::make('ip_bindings_info')
                     ->label('💡 Info IP Bindings')
@@ -82,6 +94,28 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('internetPackage.name')
                     ->label('Paket Internet')
                     ->sortable(),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->label('Status')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'active' => 'Aktif',
+                        'inactive' => 'Non-Aktif',
+                        'suspended' => 'Suspended',
+                        default => ucfirst($state),
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'active' => 'success',
+                        'inactive' => 'gray',
+                        'suspended' => 'danger',
+                        default => 'warning',
+                    })
+                    ->icon(fn (string $state): string => match ($state) {
+                        'active' => 'heroicon-o-check-circle',
+                        'inactive' => 'heroicon-o-x-circle',
+                        'suspended' => 'heroicon-o-exclamation-circle',
+                        default => 'heroicon-o-question-mark-circle',
+                    })
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('ipBindings')
                     ->label('IP Bindings')
                     ->badge()
@@ -105,7 +139,20 @@ class CustomerResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Status Customer')
+                    ->options([
+                        'active' => 'Aktif',
+                        'inactive' => 'Non-Aktif',
+                        'suspended' => 'Suspended',
+                    ])
+                    ->placeholder('Semua Status'),
+                
+                Tables\Filters\SelectFilter::make('internet_package_id')
+                    ->label('Paket Internet')
+                    ->relationship('internetPackage', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
