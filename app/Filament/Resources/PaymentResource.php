@@ -279,6 +279,35 @@ class PaymentResource extends Resource
                         'refunded' => 'Dikembalikan',
                         'canceled' => 'Dibatalkan',
                     ]),
+                Tables\Filters\SelectFilter::make('billing_year')
+                    ->label('Tahun')
+                    ->options(function () {
+                        $currentYear = (int) date('Y');
+                        $years = [];
+                        // Show last 2 years, current year, and next year
+                        for ($i = $currentYear - 2; $i <= $currentYear + 1; $i++) {
+                            $years[$i] = (string) $i;
+                        }
+                        return $years;
+                    })
+                    ->placeholder('Semua Tahun'),
+                Tables\Filters\SelectFilter::make('billing_month')
+                    ->label('Bulan')
+                    ->options([
+                        1 => 'Januari',
+                        2 => 'Februari',
+                        3 => 'Maret',
+                        4 => 'April',
+                        5 => 'Mei',
+                        6 => 'Juni',
+                        7 => 'Juli',
+                        8 => 'Agustus',
+                        9 => 'September',
+                        10 => 'Oktober',
+                        11 => 'November',
+                        12 => 'Desember',
+                    ])
+                    ->placeholder('Semua Bulan'),
                 Tables\Filters\SelectFilter::make('payment_method_id')
                     ->label('Metode Pembayaran')
                     ->relationship('paymentMethod', 'name'),
