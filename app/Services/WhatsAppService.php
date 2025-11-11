@@ -42,11 +42,38 @@ class WhatsAppService
         // Add API token to headers (required for GOWA API)
         $headers['X-API-Key'] = $this->settings->api_token;
 
-        $this->client = new Client([
+        // Configure auth options
+        $auth = null;
+        
+        // Add Basic Auth if configured
+        if (!empty($this->settings->basic_auth_username) && !empty($this->settings->basic_auth_password)) {
+            $auth = [
+                $this->settings->basic_auth_username,
+                $this->settings->basic_auth_password,
+            ];
+            Log::info('Using Basic Auth for GOWA API', [
+                'username' => $this->settings->basic_auth_username,
+                'has_password' => !empty($this->settings->basic_auth_password),
+            ]);
+        } else {
+            Log::info('Basic Auth not configured', [
+                'has_username' => !empty($this->settings->basic_auth_username),
+                'has_password' => !empty($this->settings->basic_auth_password),
+            ]);
+        }
+
+        $clientConfig = [
             'base_uri' => $baseUrl,
             'headers' => $headers,
             'verify' => false, // Skip SSL verification for local development
-        ]);
+        ];
+        
+        // Add auth only if configured
+        if ($auth !== null) {
+            $clientConfig['auth'] = $auth;
+        }
+
+        $this->client = new Client($clientConfig);
     }
 
     /**
@@ -204,12 +231,35 @@ class WhatsAppService
             
             foreach ($endpoints as $endpoint) {
                 try {
-                    Log::info("Trying GOWA endpoint: {$endpoint}", ['data' => $jsonData]);
+                    // Log request details for debugging
+                    Log::info("Trying GOWA endpoint: {$endpoint}", [
+                        'data' => $jsonData,
+                        'api_url' => $this->settings->api_url,
+                        'has_api_token' => !empty($this->settings->api_token),
+                        'api_token_length' => strlen($this->settings->api_token ?? ''),
+                        'has_basic_auth' => !empty($this->settings->basic_auth_username) && !empty($this->settings->basic_auth_password),
+                        'basic_auth_username' => $this->settings->basic_auth_username ?? 'not set',
+                    ]);
+                    
+                    // Prepare request headers
+                    $requestHeaders = [
+                        'X-API-Key' => $this->settings->api_token,
+                    ];
+                    
+                    // Add Basic Auth header manually if configured (as backup)
+                    if (!empty($this->settings->basic_auth_username) && !empty($this->settings->basic_auth_password)) {
+                        $basicAuth = base64_encode($this->settings->basic_auth_username . ':' . $this->settings->basic_auth_password);
+                        $requestHeaders['Authorization'] = 'Basic ' . $basicAuth;
+                        Log::info('Added Basic Auth header manually', [
+                            'username' => $this->settings->basic_auth_username,
+                        ]);
+                    }
                     
                     $response = $this->client->post($endpoint, [
                         'json' => $jsonData,
                         'timeout' => 30,
                         'connect_timeout' => 10,
+                        'headers' => $requestHeaders,
                     ]);
                     
                     // If successful, break the loop
@@ -221,12 +271,23 @@ class WhatsAppService
                     
                     Log::warning("Failed with endpoint {$endpoint}", [
                         'status' => $statusCode,
-                        'response' => $body
+                        'response' => $body,
+                        'api_url' => $this->settings->api_url,
                     ]);
                     
                     // Check if it's authentication error (WhatsApp not connected)
                     if ($statusCode == 401 && strpos($body, 'not connect to services server') !== false) {
                         throw new \Exception('WhatsApp belum tersambung ke GOWA server. Silakan login/scan QR Code di dashboard GOWA: ' . $this->settings->api_url);
+                    }
+                    
+                    // If 401 Unauthorized, provide helpful error message
+                    if ($statusCode == 401) {
+                        $lastError = new \Exception(
+                            "401 Unauthorized - API Token tidak valid atau tidak sesuai dengan GOWA server. " .
+                            "Pastikan API Token di aplikasi sama dengan WHATSAPP_API_KEY di GOWA server. " .
+                            "API URL: {$this->settings->api_url}"
+                        );
+                        continue;
                     }
                     
                     $lastError = $e;
@@ -240,7 +301,22 @@ class WhatsAppService
             
             // If all endpoints failed, throw the last error
             if (!isset($response) || $response === null) {
-                throw new \Exception('All GOWA endpoints failed. Last error: ' . ($lastError ? $lastError->getMessage() : 'Unknown'));
+                $errorMessage = $lastError ? $lastError->getMessage() : 'Unknown error';
+                
+                // If it's 401 error, provide more helpful message
+                if (strpos($errorMessage, '401') !== false || strpos($errorMessage, 'Unauthorized') !== false) {
+                    throw new \Exception(
+                        "401 Unauthorized - API Token tidak valid atau tidak sesuai dengan GOWA server.\n\n" .
+                        "Solusi:\n" .
+                        "1. Pastikan API Token di aplikasi (WhatsApp → Pengaturan WhatsApp) sama dengan WHATSAPP_API_KEY di GOWA server\n" .
+                        "2. Cek apakah GOWA server berjalan di: {$this->settings->api_url}\n" .
+                        "3. Pastikan header X-API-Key terkirim dengan benar\n" .
+                        "4. Restart GOWA server jika perlu\n\n" .
+                        "Last error: {$errorMessage}"
+                    );
+                }
+                
+                throw new \Exception('All GOWA endpoints failed. Last error: ' . $errorMessage);
             }
 
             $result = json_decode($response->getBody()->getContents(), true);
@@ -379,12 +455,26 @@ class WhatsAppService
                 'has_caption' => !empty($caption),
             ]);
             
-            // Send to GOWA API using multipart/form-data
-            $response = $this->client->post($endpoint, [
+            // Prepare request options with headers for Basic Auth if needed
+            $requestOptions = [
                 'multipart' => $multipart,
                 'timeout' => 60,
                 'connect_timeout' => 10,
-            ]);
+            ];
+            
+            // Add Basic Auth header manually if configured (for multipart requests)
+            if (!empty($this->settings->basic_auth_username) && !empty($this->settings->basic_auth_password)) {
+                $basicAuth = base64_encode($this->settings->basic_auth_username . ':' . $this->settings->basic_auth_password);
+                $requestOptions['headers'] = [
+                    'Authorization' => 'Basic ' . $basicAuth,
+                ];
+                Log::info('Added Basic Auth header for document upload', [
+                    'username' => $this->settings->basic_auth_username,
+                ]);
+            }
+            
+            // Send to GOWA API using multipart/form-data
+            $response = $this->client->post($endpoint, $requestOptions);
             
             $result = json_decode($response->getBody()->getContents(), true);
             

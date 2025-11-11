@@ -206,41 +206,10 @@ class UpdateOverduePayments extends Command
                 return;
             }
             
-            // Get template from setting or use default
-            $templateId = \App\Models\Setting::get('whatsapp_template_status_overdue');
-            
-            if ($templateId) {
-                $template = WhatsAppTemplate::find($templateId);
-            } else {
-                $template = WhatsAppTemplate::findByType(WhatsAppTemplate::TYPE_STATUS_OVERDUE);
-            }
-            
-            if (!$template) {
-                // Fallback message if no template found
-                $message = "Yth. {$customer->name},\n\n";
-                $message .= "⚠️ Tagihan Anda telah melewati jatuh tempo.\n\n";
-                $message .= "📅 Due Date: " . $payment->due_date->format('d M Y') . "\n";
-                $message .= "💰 Total Tagihan: Rp " . number_format($payment->amount, 0, ',', '.') . "\n";
-                $message .= "📆 Terlambat: " . Carbon::parse($payment->due_date)->diffInDays(now()) . " hari\n\n";
-                $message .= "Layanan akan dinonaktifkan jika pembayaran belum diterima hari ini.\n\n";
-                $message .= "Silakan segera melakukan pembayaran untuk menghindari pemutusan layanan.\n\n";
-                $message .= "Terima kasih.";
-            } else {
-                // Use template
-                $daysOverdue = Carbon::parse($payment->due_date)->diffInDays(now());
-                
-                $message = $template->formatMessage([
-                    'customer_name' => $customer->name,
-                    'invoice_number' => $payment->invoice_number,
-                    'amount' => number_format($payment->amount, 0, ',', '.'),
-                    'due_date' => $payment->due_date->format('d M Y'),
-                    'days_overdue' => $daysOverdue,
-                ]);
-            }
-            
-            // Send WhatsApp
+            // Send WhatsApp notification WITH PDF INVOICE for overdue payments
+            // sendBillingNotification will handle template selection automatically
             $whatsAppService = new WhatsAppService();
-            $whatsAppService->sendMessage($customer->phone, $message);
+            $whatsAppService->sendBillingNotification($payment, 'overdue', true); // true = send PDF invoice
             
             Log::info("Status overdue WhatsApp notification sent", [
                 'payment_id' => $payment->id,

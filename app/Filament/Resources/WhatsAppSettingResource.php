@@ -70,6 +70,24 @@ class WhatsAppSettingResource extends Resource
                     ])
                     ->collapsible()
                     ->collapsed(false),
+                Forms\Components\Section::make('🔐 Basic Authentication')
+                    ->description('Jika GOWA server Anda menggunakan Basic Auth (APP_BASIC_AUTH), WAJIB isi field di bawah ini. Jika tidak diisi, akan muncul error 401 Unauthorized.')
+                    ->schema([
+                        Forms\Components\TextInput::make('basic_auth_username')
+                            ->label('Basic Auth Username')
+                            ->maxLength(255)
+                            ->placeholder('bisri')
+                            ->helperText('Username untuk Basic Auth (bagian sebelum ":" dari APP_BASIC_AUTH). Contoh: jika APP_BASIC_AUTH=bisri:Hasanbisri121998, maka username adalah "bisri".'),
+                        Forms\Components\TextInput::make('basic_auth_password')
+                            ->label('Basic Auth Password')
+                            ->maxLength(255)
+                            ->password()
+                            ->revealable()
+                            ->placeholder('Hasanbisri121998')
+                            ->helperText('Password untuk Basic Auth (bagian setelah ":" dari APP_BASIC_AUTH). Contoh: jika APP_BASIC_AUTH=bisri:Hasanbisri121998, maka password adalah "Hasanbisri121998".'),
+                    ])
+                    ->collapsible()
+                    ->collapsed(false),
                 Forms\Components\TextInput::make('api_url')
                     ->label('API URL')
                     ->default('http://localhost:3000')

@@ -14,6 +14,8 @@ class WhatsAppSetting extends Model
 
     protected $fillable = [
         'api_token',
+        'basic_auth_username',
+        'basic_auth_password',
         'api_url',
         'default_country_code',
         'is_active',
