@@ -231,10 +231,16 @@ class SuspendViaIpBindingService
         // Tanggal 26 = customer yang due_date sampai dengan tanggal 25 kemarin
         $yesterday = Carbon::yesterday(); // Tanggal 25 jika dijalankan tanggal 26
 
-        return Customer::where('status', 'active')
-            ->where('is_isolated', false)
-            ->whereNotNull('due_date')
+        // Get customer IDs yang punya payment overdue/pending dengan due_date <= yesterday
+        $customerIdsWithOverduePayments = \App\Models\Payment::whereIn('status', ['pending', 'overdue'])
             ->whereDate('due_date', '<=', $yesterday)
+            ->pluck('customer_id')
+            ->unique();
+
+        // Get customers yang harus di-suspend
+        return Customer::whereIn('id', $customerIdsWithOverduePayments)
+            ->where('status', 'active')
+            ->where('is_isolated', false)
             ->whereHas('ipBindings', function ($query) {
                 $query->where('type', 'bypassed');
             })

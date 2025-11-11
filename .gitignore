@@ -86,3 +86,9 @@ coverage/
 # Database
 .dynamodb/
 .tern-port
+
+# Large binary files
+frankenphp
+rr
+.rr.yaml
+public/frankenphp-worker.php

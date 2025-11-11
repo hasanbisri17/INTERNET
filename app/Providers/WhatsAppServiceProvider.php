@@ -16,15 +16,7 @@ class WhatsAppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Register scheduled tasks
-        if ($this->app->runningInConsole()) {
-            $schedule = $this->app->make(\Illuminate\Console\Scheduling\Schedule::class);
-            
-            // Send scheduled messages every minute
-            $schedule->command('whatsapp:send-scheduled')->everyMinute();
-            
-            // Send payment reminders at 10 AM daily
-            $schedule->command('whatsapp:payment-reminders')->dailyAt('10:00');
-        }
+        // Scheduled tasks are now defined in app/Console/Kernel.php
+        // All scheduling should be centralized in one place for easier maintenance
     }
 }
