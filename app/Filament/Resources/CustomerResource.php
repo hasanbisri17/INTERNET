@@ -100,18 +100,24 @@ class CustomerResource extends Resource
                         'active' => 'Aktif',
                         'inactive' => 'Non-Aktif',
                         'suspended' => 'Suspended',
+                        'expired' => 'Expired',
+                        'terminated' => 'Terminated',
                         default => ucfirst($state),
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'active' => 'success',
                         'inactive' => 'gray',
                         'suspended' => 'danger',
+                        'expired' => 'warning',
+                        'terminated' => 'danger',
                         default => 'warning',
                     })
                     ->icon(fn (string $state): string => match ($state) {
                         'active' => 'heroicon-o-check-circle',
                         'inactive' => 'heroicon-o-x-circle',
                         'suspended' => 'heroicon-o-exclamation-circle',
+                        'expired' => 'heroicon-o-clock',
+                        'terminated' => 'heroicon-o-x-mark',
                         default => 'heroicon-o-question-mark-circle',
                     })
                     ->sortable()
