@@ -47,5 +47,17 @@ class AppServiceProvider extends ServiceProvider
         
         // Mendaftarkan observer untuk model MikrotikIpBinding (with loop protection)
         \App\Models\MikrotikIpBinding::observe(\App\Observers\MikrotikIpBindingObserver::class);
+        
+        // Mendaftarkan observer untuk model DebtPayment (handle deletion - void cash transaction and reduce paid_amount)
+        \App\Models\DebtPayment::observe(\App\Observers\DebtPaymentObserver::class);
+        
+        // Mendaftarkan observer untuk model ReceivablePayment (handle deletion - void cash transaction and reduce paid_amount)
+        \App\Models\ReceivablePayment::observe(\App\Observers\ReceivablePaymentObserver::class);
+        
+        // Mendaftarkan observer untuk model Debt (handle deletion - void cash transaction)
+        \App\Models\Debt::observe(\App\Observers\DebtObserver::class);
+        
+        // Mendaftarkan observer untuk model Receivable (handle deletion if needed)
+        \App\Models\Receivable::observe(\App\Observers\ReceivableObserver::class);
     }
 }

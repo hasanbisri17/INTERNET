@@ -28,10 +28,29 @@ class SendScheduledWhatsAppMessages extends Command
 
         foreach ($messages as $message) {
             try {
-                $result = $whatsapp->sendMessage(
-                    $message->customer->phone,
-                    $message->message
-                );
+                $result = null;
+
+                // Check if message has media or document
+                if ($message->media_path) {
+                    $fullPath = storage_path('app/public/' . $message->media_path);
+                    
+                    if (!file_exists($fullPath)) {
+                        throw new \Exception("Media file not found: {$fullPath}");
+                    }
+                    
+                    // Send with media/document
+                    $result = $whatsapp->sendDocument(
+                        $message->customer->phone,
+                        $fullPath,
+                        $message->message
+                    );
+                } else {
+                    // Send text only
+                    $result = $whatsapp->sendMessage(
+                        $message->customer->phone,
+                        $message->message
+                    );
+                }
 
                 if ($result['success']) {
                     $message->update([
@@ -40,6 +59,21 @@ class SendScheduledWhatsAppMessages extends Command
                         'response' => $result,
                     ]);
                     $sent++;
+                    
+                    // Update broadcast campaign if exists
+                    if ($message->broadcast_campaign_id) {
+                        $campaign = $message->broadcastCampaign;
+                        if ($campaign) {
+                            $sentCount = $campaign->messages()->where('status', 'sent')->count();
+                            $failedCount = $campaign->messages()->where('status', 'failed')->count();
+                            
+                            $campaign->update([
+                                'success_count' => $sentCount,
+                                'failed_count' => $failedCount,
+                                'status' => ($sentCount + $failedCount >= $campaign->total_recipients) ? 'completed' : 'processing',
+                            ]);
+                        }
+                    }
                 } else {
                     throw new \Exception($result['error'] ?? 'Unknown error');
                 }

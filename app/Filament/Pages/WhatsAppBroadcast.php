@@ -50,6 +50,7 @@ class WhatsAppBroadcast extends Page implements HasForms
             'message' => '',
             'media' => null,
             'document' => null,
+            'scheduled_at' => null,
         ]);
     }
 
@@ -184,6 +185,21 @@ class WhatsAppBroadcast extends Page implements HasForms
                             ->helperText('✅ File tersimpan! Lihat preview di sebelah kanan →'),
                     ])
                     ->collapsible(),
+
+                Section::make('📅 Jadwal Pengiriman (Opsional)')
+                    ->description('Jika diisi, pesan akan dikirim sesuai jadwal. Jika kosong, pesan akan dikirim langsung.')
+                    ->schema([
+                        \Filament\Forms\Components\DateTimePicker::make('scheduled_at')
+                            ->label('Jadwal Pengiriman')
+                            ->placeholder('Pilih tanggal dan waktu pengiriman')
+                            ->native(false)
+                            ->displayFormat('d/m/Y H:i')
+                            ->timezone('Asia/Jakarta')
+                            ->minDate(now())
+                            ->helperText('Pesan akan dikirim otomatis sesuai jadwal yang ditentukan. Sistem akan mengirim pesan setiap menit melalui cronjob.'),
+                    ])
+                    ->collapsible()
+                    ->collapsed(true),
             ])
             ->statePath('data');
     }
@@ -245,30 +261,70 @@ class WhatsAppBroadcast extends Page implements HasForms
 
             // Get total recipients count
             $totalRecipients = $recipients->count();
+            $scheduledAt = !empty($data['scheduled_at']) ? \Carbon\Carbon::parse($data['scheduled_at']) : null;
 
-            // Dispatch job to send messages in background
-            \App\Jobs\SendBroadcastMessagesJob::dispatch(
-                $campaign,
-                $recipients->toArray(),
-                $whatsappMessage,
-                $data['media'] ?? null,
-                $data['document'] ?? null
-            );
-            
-            // Show notification and redirect immediately
-            Notification::make()
-                ->title('📢 Broadcast Sedang Diproses')
-                ->body("Campaign '{$campaign->title}' sedang dikirim ke {$totalRecipients} penerima. Proses berlangsung di background.")
-                ->success()
-                ->icon('heroicon-o-clock')
-                ->actions([
-                    \Filament\Notifications\Actions\Action::make('view')
-                        ->label('Lihat Progress')
-                        ->url(route('filament.admin.resources.broadcast-campaigns.view', $campaign))
-                        ->button(),
-                ])
-                ->persistent()
-                ->send();
+            // Check if this is a scheduled broadcast
+            if ($scheduledAt && $scheduledAt->isFuture()) {
+                // Scheduled broadcast - save messages to database with scheduled_at
+                $scheduledCount = 0;
+                foreach ($recipients as $customer) {
+                    WhatsAppMessage::create([
+                        'customer_id' => $customer->id,
+                        'broadcast_campaign_id' => $campaign->id,
+                        'message_type' => 'broadcast',
+                        'message' => $this->personalizeMessage($whatsappMessage, $customer),
+                        'media_path' => $data['media'] ?? $data['document'] ?? null,
+                        'media_type' => !empty($data['media']) ? 'image' : (!empty($data['document']) ? 'document' : null),
+                        'status' => 'pending',
+                        'scheduled_at' => $scheduledAt,
+                    ]);
+                    $scheduledCount++;
+                }
+
+                // Update campaign status
+                $campaign->update([
+                    'status' => 'scheduled',
+                    'scheduled_at' => $scheduledAt,
+                ]);
+
+                Notification::make()
+                    ->title('📅 Broadcast Dijadwalkan')
+                    ->body("Campaign '{$campaign->title}' dijadwalkan untuk {$totalRecipients} penerima pada {$scheduledAt->format('d M Y H:i')}. Pesan akan dikirim otomatis sesuai jadwal.")
+                    ->success()
+                    ->icon('heroicon-o-clock')
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('view')
+                            ->label('Lihat Campaign')
+                            ->url(route('filament.admin.resources.broadcast-campaigns.view', $campaign))
+                            ->button(),
+                    ])
+                    ->persistent()
+                    ->send();
+            } else {
+                // Immediate broadcast - dispatch job to send messages in background
+                \App\Jobs\SendBroadcastMessagesJob::dispatch(
+                    $campaign,
+                    $recipients->toArray(),
+                    $whatsappMessage,
+                    $data['media'] ?? null,
+                    $data['document'] ?? null
+                );
+                
+                // Show notification and redirect immediately
+                Notification::make()
+                    ->title('📢 Broadcast Sedang Diproses')
+                    ->body("Campaign '{$campaign->title}' sedang dikirim ke {$totalRecipients} penerima. Proses berlangsung di background.")
+                    ->success()
+                    ->icon('heroicon-o-clock')
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('view')
+                            ->label('Lihat Progress')
+                            ->url(route('filament.admin.resources.broadcast-campaigns.view', $campaign))
+                            ->button(),
+                    ])
+                    ->persistent()
+                    ->send();
+            }
             
             // Reset form
             $this->form->fill([
@@ -278,6 +334,7 @@ class WhatsAppBroadcast extends Page implements HasForms
                 'message' => '',
                 'media' => null,
                 'document' => null,
+                'scheduled_at' => null,
             ]);
             $this->broadcastTitle = '';
             $this->message = '';

@@ -26,11 +26,13 @@ class BroadcastCampaign extends Model
         'status',
         'created_by',
         'sent_at',
+        'scheduled_at',
     ];
 
     protected $casts = [
         'recipient_ids' => 'array',
         'sent_at' => 'datetime',
+        'scheduled_at' => 'datetime',
     ];
 
     /**
@@ -57,6 +59,7 @@ class BroadcastCampaign extends Model
         return match($this->status) {
             'completed' => 'success',
             'processing' => 'info',
+            'scheduled' => 'warning',
             'pending' => 'warning',
             'failed' => 'danger',
             default => 'secondary',
@@ -71,6 +74,7 @@ class BroadcastCampaign extends Model
         return match($this->status) {
             'completed' => 'Selesai',
             'processing' => 'Diproses',
+            'scheduled' => 'Terjadwal',
             'pending' => 'Menunggu',
             'failed' => 'Gagal',
             default => $this->status,

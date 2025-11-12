@@ -33,6 +33,11 @@ class UserResource extends Resource
                     ->required()
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
+                Forms\Components\TextInput::make('phone')
+                    ->label('Nomor Telepon')
+                    ->tel()
+                    ->maxLength(255)
+                    ->helperText('Nomor telepon untuk WhatsApp reminder (opsional)'),
                 Forms\Components\TextInput::make('password')
                     ->password()
                     ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
@@ -51,6 +56,10 @@ class UserResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('phone')
+                    ->label('Telepon')
+                    ->searchable()
+                    ->toggleable(),
                 Tables\Columns\IconColumn::make('is_admin')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
