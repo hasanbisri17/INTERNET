@@ -267,6 +267,13 @@ class PaymentResource extends Resource
                         'e_wallet' => 'warning',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('notes')
+                    ->label('Catatan')
+                    ->searchable()
+                    ->limit(50)
+                    ->tooltip(fn (?Payment $record): ?string => $record?->notes)
+                    ->default('-')
+                    ->wrap(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
