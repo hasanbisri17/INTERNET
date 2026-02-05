@@ -371,8 +371,22 @@ class PaymentResource extends Resource
                             'payment_id' => $record->id,
                         ]);
 
-                        // WhatsApp notification akan dikirim otomatis oleh PaymentObserver
-                        // saat status berubah menjadi 'paid'
+                        // Kirim notifikasi WhatsApp dengan PDF invoice
+                        // Catatan: Observer juga akan mengirim, tapi kita tetap kirim di sini
+                        // sebagai backup jika observer tidak terpanggil dengan benar
+                        try {
+                            $whatsapp = new WhatsAppService();
+                            $whatsapp->sendBillingNotification($record, 'paid', true); // true = kirim PDF invoice
+                            
+                            \Illuminate\Support\Facades\Log::info("Manual payment WhatsApp sent for {$record->invoice_number}", [
+                                'customer' => $record->customer->name,
+                                'send_pdf' => true,
+                            ]);
+                        } catch (\Exception $e) {
+                            \Illuminate\Support\Facades\Log::error("Failed to send WhatsApp for manual payment: " . $e->getMessage(), [
+                                'invoice' => $record->invoice_number,
+                            ]);
+                        }
                     })
                     ->visible(fn (?Payment $record): bool => $record && $record->status !== 'paid')
                     ->successNotificationTitle('Pembayaran berhasil dicatat')
@@ -381,7 +395,7 @@ class PaymentResource extends Resource
                             return \Filament\Notifications\Notification::make()
                                 ->success()
                                 ->title('Pembayaran berhasil dicatat')
-                                ->body("Pembayaran telah dicatat dan otomatis ditambahkan ke Kas sebagai pemasukan.\nNomor Invoice: {$record->invoice_number}\nPelanggan: {$record->customer->name}\nJumlah: Rp " . number_format($record->amount, 2));
+                                ->body("Pembayaran telah dicatat dan otomatis ditambahkan ke Kas sebagai pemasukan.\nNomor Invoice: {$record->invoice_number}\nPelanggan: {$record->customer->name}\nJumlah: Rp " . number_format($record->amount, 2) . "\n\n✅ Notifikasi WhatsApp + PDF invoice dikirim ke pelanggan.");
                         }
                     ),
                 // Tambahkan action pembatalan tagihan

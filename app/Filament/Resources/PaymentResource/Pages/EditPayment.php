@@ -51,29 +51,17 @@ class EditPayment extends EditRecord
     
     protected function afterSave(): void
     {
-        // Jika status pembayaran adalah 'paid', kirim notifikasi WhatsApp WITH PDF INVOICE
+        // WhatsApp notification dengan PDF invoice sudah ditangani oleh PaymentObserver
+        // saat status berubah menjadi 'paid'.
+        // Tidak perlu kirim ulang di sini untuk menghindari duplikasi.
+        
+        // Hanya tampilkan notifikasi sukses jika status adalah paid
         if ($this->record->status === 'paid' && $this->record->payment_date) {
-            try {
-                $whatsapp = new \App\Services\WhatsAppService();
-                $whatsapp->sendBillingNotification($this->record, 'paid', true); // true = send PDF invoice lunas
-                
-                \Filament\Notifications\Notification::make()
-                    ->success()
-                    ->title('Notifikasi WhatsApp Terkirim')
-                    ->body('Notifikasi pembayaran + invoice PDF berhasil dikirim ke pelanggan.')
-                    ->send();
-            } catch (\Exception $e) {
-                \Filament\Notifications\Notification::make()
-                    ->warning()
-                    ->title('Notifikasi WhatsApp Gagal')
-                    ->body('Gagal mengirim notifikasi WhatsApp: ' . $e->getMessage())
-                    ->send();
-                
-                \Illuminate\Support\Facades\Log::error('Gagal mengirim notifikasi WhatsApp pembayaran', [
-                    'payment_id' => $this->record->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
+            \Filament\Notifications\Notification::make()
+                ->success()
+                ->title('Pembayaran Berhasil Disimpan')
+                ->body('Notifikasi WhatsApp + invoice PDF akan dikirim otomatis ke pelanggan.')
+                ->send();
         }
     }
 }

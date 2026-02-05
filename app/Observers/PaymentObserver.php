@@ -58,20 +58,9 @@ class PaymentObserver
                 Log::error("Failed to auto unsuspend via IP Binding for payment {$payment->invoice_number}: {$e->getMessage()}");
             }
             
-            // 2. Send WhatsApp notification to customer
-            try {
-                $whatsAppService = app(WhatsAppService::class);
-                
-                // Send payment confirmation notification with PDF invoice
-                $whatsAppService->sendBillingNotification($payment, 'paid', true);
-                
-                Log::info("Payment confirmation WhatsApp sent for {$payment->invoice_number}", [
-                    'customer' => $payment->customer->name,
-                    'payment_id' => $payment->id,
-                ]);
-            } catch (\Exception $e) {
-                Log::error("Failed to send WhatsApp notification for payment {$payment->invoice_number}: {$e->getMessage()}");
-            }
+            // 2. WhatsApp notification sekarang dikirim langsung dari action/page
+            // untuk kontrol yang lebih baik dan menghindari duplikasi.
+            // Lihat: PaymentResource.php (action 'pay') dan CreatePayment.php
             
             // 3. Send database notification to all admin users
             $this->sendPaymentPaidNotification($payment);

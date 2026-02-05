@@ -55,6 +55,10 @@ class SystemSettings extends Page implements HasForms
             // Analytics Widgets
             'header_widgets' => $this->getHeaderWidgetsData(),
             'footer_widgets' => $this->getFooterWidgetsData(),
+            
+            // AI Settings
+            'openrouter_api_key' => Setting::get('openrouter_api_key', env('OPENROUTER_API_KEY', '')),
+            'openrouter_model' => Setting::get('openrouter_model', env('OPENROUTER_MODEL', 'meta-llama/llama-3.2-3b-instruct')),
         ]);
     }
 
@@ -473,7 +477,206 @@ class SystemSettings extends Page implements HasForms
                                     ->collapsible(),
                             ]),
 
-                        // Tab 3: Analytics Widgets
+                        // Tab 3: AI Settings
+                        Forms\Components\Tabs\Tab::make('AI Assistant')
+                            ->icon('heroicon-o-sparkles')
+                            ->schema([
+                                Forms\Components\Section::make('OpenRouter API')
+                                    ->description('Konfigurasi API Key dan Model AI untuk AI Assistant (Chat Widget)')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('openrouter_info')
+                                            ->label('')
+                                            ->content(new \Illuminate\Support\HtmlString('
+                                                <div class="rounded-lg bg-blue-50 dark:bg-blue-950 p-4 border border-blue-200 dark:border-blue-800">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="flex-shrink-0">
+                                                            <svg class="h-6 w-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                                            </svg>
+                                                        </div>
+                                                        <div class="flex-1">
+                                                            <p class="text-sm text-blue-800 dark:text-blue-200 font-semibold mb-2">
+                                                                🤖 AI Assistant dengan OpenRouter
+                                                            </p>
+                                                            <p class="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                                                                Chat widget menggunakan OpenRouter untuk mengakses berbagai model AI gratis. Pilih model yang sesuai dengan kebutuhan Anda.
+                                                            </p>
+                                                            <ul class="text-xs text-blue-600 dark:text-blue-400 list-disc list-inside space-y-1 mb-2">
+                                                                <li>Query data KAS, Hutang, Piutang, Tagihan, dan Customer</li>
+                                                                <li>Filter berdasarkan waktu dan status</li>
+                                                                <li>Response cepat dan akurat</li>
+                                                                <li>Banyak pilihan model AI gratis</li>
+                                                            </ul>
+                                                            <div class="mt-3 p-2 bg-blue-100 dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">
+                                                                <p class="text-xs text-blue-800 dark:text-blue-200">
+                                                                    💡 <strong>Cara mendapatkan API Key:</strong> Kunjungi <a href="https://openrouter.ai/keys" target="_blank" class="underline font-semibold">OpenRouter</a> dan buat API key baru (gratis). Semua model yang tersedia di sini adalah model gratis.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            '))
+                                            ->columnSpanFull(),
+                                        
+                                        Forms\Components\Grid::make(2)
+                                            ->schema([
+                                                Forms\Components\TextInput::make('openrouter_api_key')
+                                                    ->label('OpenRouter API Key')
+                                                    ->password()
+                                                    ->revealable()
+                                                    ->placeholder('Masukkan API Key OpenRouter Anda')
+                                                    ->helperText('API Key akan disimpan dengan aman di database. Jika kosong, sistem akan menggunakan OPENROUTER_API_KEY dari file .env')
+                                                    ->maxLength(255)
+                                                    ->required(),
+                                                
+                                        Forms\Components\Select::make('openrouter_model')
+                                            ->label('Model AI (Gratis)')
+                                            ->options(function (Forms\Get $get) {
+                                                $apiKey = $get('openrouter_api_key');
+                                                // Try to get models from API if API key is provided
+                                                if (!empty($apiKey)) {
+                                                    $apiModels = \App\Services\AIService::getAvailableModelsFromAPI($apiKey);
+                                                    if (!empty($apiModels)) {
+                                                        return $apiModels;
+                                                    }
+                                                }
+                                                // Fallback to static list
+                                                return \App\Services\AIService::getFreeModels();
+                                            })
+                                            ->default('meta-llama/llama-3.2-3b-instruct')
+                                            ->searchable()
+                                            ->helperText('Pilih model AI yang ingin digunakan. Semua model ini gratis. Rekomendasi: Meta Llama 3.2 3B (Paling stabil, jarang rate-limited).')
+                                            ->required()
+                                            ->live(),
+                                            ]),
+                                        
+                                        Forms\Components\Actions::make([
+                                            Forms\Components\Actions\Action::make('test_connection')
+                                                ->label('Test Koneksi')
+                                                ->icon('heroicon-o-arrow-path')
+                                                ->color('success')
+                                                ->action(function (Forms\Get $get) {
+                                                    $apiKey = $get('openrouter_api_key');
+                                                    $model = $get('openrouter_model') ?: 'meta-llama/llama-3.2-3b-instruct';
+                                                    
+                                                    if (empty($apiKey)) {
+                                                        Notification::make()
+                                                            ->title('API Key Kosong')
+                                                            ->body('Silakan masukkan API Key terlebih dahulu')
+                                                            ->warning()
+                                                            ->send();
+                                                        return;
+                                                    }
+                                                    
+                                                    try {
+                                                        // Test connection dengan OpenRouter API
+                                                        $response = \Illuminate\Support\Facades\Http::timeout(15)
+                                                            ->withHeaders([
+                                                                'Authorization' => 'Bearer ' . $apiKey,
+                                                                'HTTP-Referer' => config('app.url', 'https://apps.fastbiz.my.id'),
+                                                                'X-Title' => config('app.name', 'FastBiz'),
+                                                                'Content-Type' => 'application/json',
+                                                            ])
+                                                            ->post('https://openrouter.ai/api/v1/chat/completions', [
+                                                                'model' => $model,
+                                                                'messages' => [
+                                                                    [
+                                                                        'role' => 'user',
+                                                                        'content' => 'Hello',
+                                                                    ],
+                                                                ],
+                                                                'max_tokens' => 10,
+                                                            ]);
+                                                        
+                                                        if ($response->successful()) {
+                                                            $data = $response->json();
+                                                            $message = $data['choices'][0]['message']['content'] ?? 'Response received';
+                                                            
+                                                            Notification::make()
+                                                                ->title('Koneksi Berhasil')
+                                                                ->body('API Key OpenRouter valid dan model ' . $model . ' terhubung dengan baik!')
+                                                                ->success()
+                                                                ->send();
+                                                        } else {
+                                                            $statusCode = $response->status();
+                                                            $errorBody = $response->body();
+                                                            $errorJson = $response->json();
+                                                            
+                                                            $errorMessage = 'Unknown error';
+                                                            $helpText = '';
+                                                            
+                                                            // Handle specific error codes
+                                                            if ($statusCode == 429) {
+                                                                $errorMessage = 'Rate limit exceeded atau quota habis';
+                                                                $helpText = 'Coba lagi dalam beberapa saat, atau coba model lain.';
+                                                            } elseif ($statusCode == 401) {
+                                                                $errorMessage = 'API Key tidak valid atau tidak memiliki akses';
+                                                                $helpText = 'Pastikan API Key dari OpenRouter benar dan memiliki akses ke model gratis.';
+                                                            } elseif ($statusCode == 400) {
+                                                                $errorMessage = 'Request tidak valid';
+                                                                $helpText = 'Model mungkin tidak tersedia atau format request salah.';
+                                                            } elseif ($statusCode == 404) {
+                                                                $errorMessage = 'Model tidak ditemukan';
+                                                                $helpText = 'Model yang dipilih mungkin tidak tersedia. Coba pilih model lain.';
+                                                            }
+                                                            
+                                                            if (isset($errorJson['error']['message'])) {
+                                                                $errorMessage = $errorJson['error']['message'];
+                                                            } elseif (isset($errorJson['error'])) {
+                                                                $errorMessage = is_string($errorJson['error']) ? $errorJson['error'] : json_encode($errorJson['error']);
+                                                            } elseif (!empty($errorBody)) {
+                                                                $errorMessage = $errorBody;
+                                                            }
+                                                            
+                                                            // Log error for debugging
+                                                            \Illuminate\Support\Facades\Log::error('OpenRouter test connection failed', [
+                                                                'status_code' => $statusCode,
+                                                                'error' => $errorJson,
+                                                                'model' => $model,
+                                                                'api_key_prefix' => substr($apiKey, 0, 10) . '...',
+                                                            ]);
+                                                            
+                                                            $fullMessage = 'HTTP ' . $statusCode . ': ' . $errorMessage;
+                                                            if ($helpText) {
+                                                                $fullMessage .= "\n\n" . $helpText;
+                                                            }
+                                                            
+                                                            Notification::make()
+                                                                ->title('Koneksi Gagal')
+                                                                ->body($fullMessage)
+                                                                ->danger()
+                                                                ->persistent()
+                                                                ->send();
+                                                        }
+                                                    } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                                                        Notification::make()
+                                                            ->title('Error Koneksi')
+                                                            ->body('Tidak dapat terhubung ke OpenRouter API. Periksa koneksi internet Anda.')
+                                                            ->danger()
+                                                            ->persistent()
+                                                            ->send();
+                                                    } catch (\Exception $e) {
+                                                        \Illuminate\Support\Facades\Log::error('OpenRouter test connection exception', [
+                                                            'error' => $e->getMessage(),
+                                                            'trace' => $e->getTraceAsString(),
+                                                        ]);
+                                                        
+                                                        Notification::make()
+                                                            ->title('Error')
+                                                            ->body('Terjadi kesalahan: ' . $e->getMessage())
+                                                            ->danger()
+                                                            ->persistent()
+                                                            ->send();
+                                                    }
+                                                }),
+                                        ])
+                                        ->columnSpanFull(),
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed(false),
+                            ]),
+
+                        // Tab 4: Analytics Widgets
                         Forms\Components\Tabs\Tab::make('Widget Analisis')
                             ->icon('heroicon-o-chart-bar')
                             ->schema([
@@ -590,6 +793,23 @@ class SystemSettings extends Page implements HasForms
                 config(['app.timezone' => $data['app_timezone']]);
                 date_default_timezone_set($data['app_timezone']);
                 Cache::forget('setting_app_timezone');
+            }
+
+            // Save AI Settings (OpenRouter API Key & Model)
+            if (isset($data['openrouter_api_key'])) {
+                if (!empty($data['openrouter_api_key'])) {
+                    Setting::set('openrouter_api_key', $data['openrouter_api_key']);
+                    Cache::forget('setting_openrouter_api_key');
+                } else {
+                    // If empty, delete the setting (will fallback to .env)
+                    Setting::where('key', 'openrouter_api_key')->delete();
+                    Cache::forget('setting_openrouter_api_key');
+                }
+            }
+            
+            if (isset($data['openrouter_model'])) {
+                Setting::set('openrouter_model', $data['openrouter_model']);
+                Cache::forget('setting_openrouter_model');
             }
 
             // Save Analytics Widget Settings

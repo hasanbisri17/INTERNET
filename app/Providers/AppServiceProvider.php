@@ -59,5 +59,10 @@ class AppServiceProvider extends ServiceProvider
         
         // Mendaftarkan observer untuk model Receivable (handle deletion if needed)
         \App\Models\Receivable::observe(\App\Observers\ReceivableObserver::class);
+        
+        // Add chat widget to all Filament views using view composer
+        \Illuminate\Support\Facades\View::composer('filament.*', function ($view) {
+            $view->with('showChatWidget', true);
+        });
     }
 }

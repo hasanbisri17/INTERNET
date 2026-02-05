@@ -1,0 +1,150 @@
+version: '3.8'
+
+# ============================================================================
+# Internet Management System - Docker Compose untuk EasyPanel
+# ============================================================================
+# Gunakan file ini di EasyPanel dengan memilih "Docker Compose" deployment
+# ============================================================================
+
+services:
+  # ==========================================================================
+  # Application Service
+  # ==========================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: internet-management:latest
+    container_name: internet-app
+    restart: unless-stopped
+    ports:
+      - "1217:1217"
+    environment:
+      # Application
+      - APP_NAME=${APP_NAME:-Internet Management}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_KEY=${APP_KEY:-}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_URL=${APP_URL:-http://localhost:1217}
+      - APP_TIMEZONE=Asia/Jakarta
+      
+      # Database
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-internet_management}
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      
+      # Cache & Session
+      - CACHE_DRIVER=${CACHE_DRIVER:-file}
+      - SESSION_DRIVER=${SESSION_DRIVER:-file}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
+      
+      # Mail (optional)
+      - MAIL_MAILER=${MAIL_MAILER:-log}
+      - MAIL_HOST=${MAIL_HOST:-}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-admin@example.com}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME:-Internet Management}
+      
+      # Logging
+      - LOG_CHANNEL=stack
+      - LOG_LEVEL=${LOG_LEVEL:-error}
+      
+      # WhatsApp (optional)
+      - WHATSAPP_API_URL=${WHATSAPP_API_URL:-}
+      - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN:-}
+      
+      # Mikrotik (optional)
+      - MIKROTIK_HOST=${MIKROTIK_HOST:-}
+      - MIKROTIK_USERNAME=${MIKROTIK_USERNAME:-}
+      - MIKROTIK_PASSWORD=${MIKROTIK_PASSWORD:-}
+      
+      # Auto Setup
+      - RUN_MIGRATIONS=true
+      - RUN_SEEDERS=true
+      
+    volumes:
+      # Persistent storage untuk data aplikasi
+      - app_storage:/var/www/html/storage
+      - app_public:/var/www/html/public/storage
+    networks:
+      - internet-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ==========================================================================
+  # MySQL Database Service
+  # ==========================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: internet-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-password}
+      - MYSQL_DATABASE=${DB_DATABASE:-internet_management}
+      - MYSQL_USER=${DB_USERNAME:-internet_user}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-password}
+      - TZ=Asia/Jakarta
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=256M
+      - --max-connections=200
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - internet-network
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+networks:
+  internet-network:
+    driver: bridge
+
+# ==========================================================================
+# Volumes (Persistent Storage)
+# ==========================================================================
+volumes:
+  mysql_data:
+    driver: local
+  app_storage:
+    driver: local
+  app_public:
+    driver: local

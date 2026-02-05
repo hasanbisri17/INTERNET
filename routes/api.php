@@ -51,3 +51,8 @@ Route::post('/auth/token', function (Request $request) {
 Route::match(['post'], '/webhooks/payments/{gateway}', [PaymentWebhookController::class, 'handle'])
     ->where('gateway', '[A-Za-z0-9_-]+')
     ->name('api.webhooks.payments');
+
+// Chat API (requires authentication, use web middleware for session support)
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::post('/chat', [App\Http\Controllers\ChatController::class, 'chat'])->name('api.chat');
+});
