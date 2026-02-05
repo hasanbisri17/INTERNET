@@ -1,9 +1,9 @@
 # Nixpacks Configuration for Laravel + Filament Application
 # EasyPanel Deployment
 
-# Define providers - npm is included with nodejs, don't specify separately
+# Providers - PHP and Node.js
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["php82", "php82Extensions.pdo", "php82Extensions.pdo_mysql", "php82Extensions.mbstring", "php82Extensions.xml", "php82Extensions.curl", "php82Extensions.zip", "php82Extensions.gd", "php82Extensions.bcmath", "php82Extensions.intl", "php82Packages.composer", "nodejs_20"]
 
 # Install phase - setup directories and install dependencies
 [phases.install]
