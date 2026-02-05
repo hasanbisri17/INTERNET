@@ -1,0 +1,48 @@
+# Nixpacks Configuration for Laravel + Filament Application
+# EasyPanel Deployment
+
+# Define providers
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm"]
+
+# Install phase - setup directories and install dependencies
+[phases.install]
+cmds = [
+    # Create required Laravel directories BEFORE composer install
+    "mkdir -p bootstrap/cache",
+    "mkdir -p storage/framework/cache",
+    "mkdir -p storage/framework/sessions",
+    "mkdir -p storage/framework/views",
+    "mkdir -p storage/logs",
+    "chmod -R 777 bootstrap/cache",
+    "chmod -R 777 storage",
+    
+    # Install PHP dependencies
+    "composer install --no-dev --prefer-dist --optimize-autoloader --ignore-platform-reqs",
+    
+    # Install Node dependencies
+    "npm ci --legacy-peer-deps"
+]
+
+# Build phase - compile assets
+[phases.build]
+cmds = [
+    "npm run build",
+    "php artisan storage:link || true",
+    "php artisan filament:cache-components || true"
+]
+
+# Start command for production
+[start]
+cmd = """
+mkdir -p bootstrap/cache storage/framework/{cache,sessions,views} storage/logs && \
+chmod -R 777 bootstrap/cache storage && \
+php artisan config:clear && \
+php artisan route:clear && \
+php artisan view:clear && \
+php artisan migrate --force || true && \
+php artisan config:cache && \
+php artisan route:cache && \
+php artisan view:cache && \
+php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+"""

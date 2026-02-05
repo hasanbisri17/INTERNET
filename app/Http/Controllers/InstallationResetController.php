@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Artisan;
 
-class InstallationController extends Controller
+class InstallationResetController extends Controller
 {
     // ... existing code ...
 
