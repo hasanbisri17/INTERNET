@@ -1,9 +1,9 @@
 # Nixpacks Configuration for Laravel + Filament Application
 # EasyPanel Deployment
 
-# Define providers
+# Define providers - npm is included with nodejs, don't specify separately
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm"]
+nixPkgs = ["nodejs_20"]
 
 # Install phase - setup directories and install dependencies
 [phases.install]
@@ -27,6 +27,6 @@ cmds = [
     "php artisan filament:cache-components || true"
 ]
 
-# Start command for production - must be single line
+# Start command for production
 [start]
 cmd = "mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs && chmod -R 777 bootstrap/cache storage && php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan migrate --force || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
