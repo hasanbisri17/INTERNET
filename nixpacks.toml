@@ -19,13 +19,12 @@ cmds = [
     "npm ci --legacy-peer-deps"
 ]
 
-# Build phase - compile assets
+# Build phase - compile assets only, no scripts that need DB
 [phases.build]
 cmds = [
-    "npm run build",
-    "composer dump-autoload --optimize"
+    "npm run build"
 ]
 
 # Start command for production - run artisan commands here when DB is available
 [start]
-cmd = "mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs && chmod -R 777 bootstrap/cache storage && php artisan package:discover --ansi && php artisan storage:link || true && php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan migrate --force || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan filament:cache-components || true && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+cmd = "mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs && chmod -R 777 bootstrap/cache storage && composer dump-autoload --optimize --no-scripts && php artisan package:discover --ansi || true && php artisan storage:link || true && php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan migrate --force || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan filament:cache-components || true && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
