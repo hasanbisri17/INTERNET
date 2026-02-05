@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LogoUploadController;
