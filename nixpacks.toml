@@ -15,7 +15,7 @@ cmds = [
     "mkdir -p storage/logs",
     "chmod -R 777 bootstrap/cache",
     "chmod -R 777 storage",
-    "composer install --no-dev --prefer-dist --optimize-autoloader --ignore-platform-reqs",
+    "composer install --no-dev --prefer-dist --optimize-autoloader --ignore-platform-reqs --no-scripts",
     "npm ci --legacy-peer-deps"
 ]
 
@@ -23,10 +23,9 @@ cmds = [
 [phases.build]
 cmds = [
     "npm run build",
-    "php artisan storage:link || true",
-    "php artisan filament:cache-components || true"
+    "composer dump-autoload --optimize"
 ]
 
-# Start command for production
+# Start command for production - run artisan commands here when DB is available
 [start]
-cmd = "mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs && chmod -R 777 bootstrap/cache storage && php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan migrate --force || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+cmd = "mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs && chmod -R 777 bootstrap/cache storage && php artisan package:discover --ansi && php artisan storage:link || true && php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan migrate --force || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan filament:cache-components || true && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
