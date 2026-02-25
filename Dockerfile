@@ -354,14 +354,16 @@ stdout_logfile=/var/log/supervisor/queue.log
 stopwaitsecs=60
 
 [program:laravel-schedule]
-command=/bin/sh -c "while [ true ]; do php /var/www/html/artisan schedule:run --verbose --no-interaction >> /var/log/supervisor/schedule.log 2>&1; sleep 60; done"
+command=/bin/sh -c "while true; do php /var/www/html/artisan schedule:run --verbose --no-interaction >> /var/log/supervisor/schedule.log 2>&1; sleep 60; done"
 directory=/var/www/html
 autostart=true
 autorestart=true
 user=www-data
 priority=30
-redirect_stderr=true
-stdout_logfile=/var/log/supervisor/schedule.log
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
 EOF
 
 # Create startup script
@@ -381,6 +383,9 @@ log() {
 log "Creating required directories..."
 mkdir -p /var/log/supervisor
 mkdir -p /var/log/nginx
+touch /var/log/supervisor/schedule.log /var/log/supervisor/queue.log
+chown -R www-data:www-data /var/log/supervisor
+chmod -R 775 /var/log/supervisor
 mkdir -p /var/www/html/storage/app/public
 mkdir -p /var/www/html/storage/framework/{cache,sessions,views}
 mkdir -p /var/www/html/storage/logs

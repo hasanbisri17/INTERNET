@@ -36,3 +36,11 @@ Schedule::command('payments:check-due-dates')->dailyAt('08:00')->withoutOverlapp
 
 // Auto suspend customers via IP Binding on 26th of each month at 00:01 AM
 Schedule::command('suspend:auto-ip-binding')->monthlyOn(26, '00:01')->withoutOverlapping();
+
+// Send debt reminders - Run 2 times a day
+Schedule::command('debts:send-reminders --days-before=3')->dailyAt('10:00')->withoutOverlapping();
+Schedule::command('debts:send-reminders --days-before=3')->dailyAt('16:00')->withoutOverlapping();
+
+// Send receivable reminders - Run 2 times a day
+Schedule::command('receivables:send-reminders --days-before=3')->dailyAt('10:00')->withoutOverlapping();
+Schedule::command('receivables:send-reminders --days-before=3')->dailyAt('16:00')->withoutOverlapping();
