@@ -122,6 +122,26 @@ class SendPaymentReminders extends Command
             $failed = 0;
 
             foreach ($payments as $payment) {
+                // Auto-suspend customer via IP Binding if the rule is overdue
+                if ($rule->days_before_due > 0 && !$isDryRun && $payment->customer) {
+                    try {
+                        // Check if customer is not already isolated
+                        if (!$payment->customer->is_isolated || $payment->customer->status !== 'suspended') {
+                            $suspendService = new \App\Services\SuspendViaIpBindingService();
+                            $suspendResult = $suspendService->suspendCustomer($payment->customer);
+
+                            if ($suspendResult['success']) {
+                                $this->line("  🔒 Auto-suspended {$payment->customer->name} via IP Binding (" . ($suspendResult['suspended_count'] ?? 1) . " IPs)");
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Failed to auto-suspend during payment reminders", [
+                            'customer_id' => $payment->customer->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
                 $result = $this->sendReminder($payment, $rule, $isDryRun);
                 if ($result) {
                     $sent++;
